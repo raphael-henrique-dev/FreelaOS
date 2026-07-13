@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as ProjetosRouteImport } from './routes/projetos'
 import { Route as OportunidadesRouteImport } from './routes/oportunidades'
@@ -22,6 +23,11 @@ import { Route as OportunidadesIndexRouteImport } from './routes/oportunidades.i
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PropostasRoute = PropostasRouteImport.update({
   id: '/propostas',
   path: '/propostas',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/oportunidades': typeof OportunidadesRouteWithChildren
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/oportunidades/': typeof OportunidadesIndexRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
   '/projetos': typeof ProjetosRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/oportunidades': typeof OportunidadesIndexRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/oportunidades': typeof OportunidadesRouteWithChildren
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/oportunidades/': typeof OportunidadesIndexRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/oportunidades'
     | '/projetos'
     | '/propostas'
+    | '/sitemap.xml'
     | '/oportunidades/$id'
     | '/propostas/$id'
     | '/oportunidades/'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/financeiro'
     | '/projetos'
+    | '/sitemap.xml'
     | '/oportunidades/$id'
     | '/propostas/$id'
     | '/oportunidades'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/oportunidades'
     | '/projetos'
     | '/propostas'
+    | '/sitemap.xml'
     | '/oportunidades/$id'
     | '/propostas/$id'
     | '/oportunidades/'
@@ -176,10 +188,18 @@ export interface RootRouteChildren {
   OportunidadesRoute: typeof OportunidadesRouteWithChildren
   ProjetosRoute: typeof ProjetosRoute
   PropostasRoute: typeof PropostasRouteWithChildren
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/propostas': {
       id: '/propostas'
       path: '/propostas'
@@ -304,6 +324,7 @@ const rootRouteChildren: RootRouteChildren = {
   OportunidadesRoute: OportunidadesRouteWithChildren,
   ProjetosRoute: ProjetosRoute,
   PropostasRoute: PropostasRouteWithChildren,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
