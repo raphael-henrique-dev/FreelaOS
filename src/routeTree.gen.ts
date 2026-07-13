@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as ProjetosRouteImport } from './routes/projetos'
 import { Route as OportunidadesRouteImport } from './routes/oportunidades'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
@@ -32,6 +33,11 @@ const ProjetosRoute = ProjetosRouteImport.update({
 const OportunidadesRoute = OportunidadesRouteImport.update({
   id: '/oportunidades',
   path: '/oportunidades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesRoute = ClientesRouteImport.update({
@@ -68,6 +74,7 @@ const OportunidadesIdRoute = OportunidadesIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/clientes': typeof ClientesRoute
+  '/financeiro': typeof FinanceiroRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/clientes': typeof ClientesRoute
+  '/financeiro': typeof FinanceiroRoute
   '/projetos': typeof ProjetosRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/clientes': typeof ClientesRoute
+  '/financeiro': typeof FinanceiroRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/clientes'
+    | '/financeiro'
     | '/oportunidades'
     | '/projetos'
     | '/propostas'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/clientes'
+    | '/financeiro'
     | '/projetos'
     | '/oportunidades/$id'
     | '/propostas/$id'
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/clientes'
+    | '/financeiro'
     | '/oportunidades'
     | '/projetos'
     | '/propostas'
@@ -134,6 +146,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientesRoute: typeof ClientesRoute
+  FinanceiroRoute: typeof FinanceiroRoute
   OportunidadesRoute: typeof OportunidadesRouteWithChildren
   ProjetosRoute: typeof ProjetosRoute
   PropostasRoute: typeof PropostasRouteWithChildren
@@ -160,6 +173,13 @@ declare module '@tanstack/react-router' {
       path: '/oportunidades'
       fullPath: '/oportunidades'
       preLoaderRoute: typeof OportunidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes': {
@@ -238,6 +258,7 @@ const PropostasRouteWithChildren = PropostasRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientesRoute: ClientesRoute,
+  FinanceiroRoute: FinanceiroRoute,
   OportunidadesRoute: OportunidadesRouteWithChildren,
   ProjetosRoute: ProjetosRoute,
   PropostasRoute: PropostasRouteWithChildren,
