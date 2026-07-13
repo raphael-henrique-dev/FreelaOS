@@ -9,38 +9,246 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as PropostasRouteImport } from './routes/propostas'
+import { Route as ProjetosRouteImport } from './routes/projetos'
+import { Route as OportunidadesRouteImport } from './routes/oportunidades'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as ClientesRouteImport } from './routes/clientes'
+import { Route as AgentesRouteImport } from './routes/agentes'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
+import { Route as OportunidadesIndexRouteImport } from './routes/oportunidades.index'
+import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
+import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropostasRoute = PropostasRouteImport.update({
+  id: '/propostas',
+  path: '/propostas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjetosRoute = ProjetosRouteImport.update({
+  id: '/projetos',
+  path: '/projetos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OportunidadesRoute = OportunidadesRouteImport.update({
+  id: '/oportunidades',
+  path: '/oportunidades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesRoute = ClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentesRoute = AgentesRouteImport.update({
+  id: '/agentes',
+  path: '/agentes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropostasIndexRoute = PropostasIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PropostasRoute,
+} as any)
+const OportunidadesIndexRoute = OportunidadesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OportunidadesRoute,
+} as any)
+const PropostasIdRoute = PropostasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PropostasRoute,
+} as any)
+const OportunidadesIdRoute = OportunidadesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => OportunidadesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agentes': typeof AgentesRoute
+  '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/oportunidades': typeof OportunidadesRouteWithChildren
+  '/projetos': typeof ProjetosRoute
+  '/propostas': typeof PropostasRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/oportunidades/$id': typeof OportunidadesIdRoute
+  '/propostas/$id': typeof PropostasIdRoute
+  '/oportunidades/': typeof OportunidadesIndexRoute
+  '/propostas/': typeof PropostasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agentes': typeof AgentesRoute
+  '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/projetos': typeof ProjetosRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/oportunidades/$id': typeof OportunidadesIdRoute
+  '/propostas/$id': typeof PropostasIdRoute
+  '/oportunidades': typeof OportunidadesIndexRoute
+  '/propostas': typeof PropostasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agentes': typeof AgentesRoute
+  '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/oportunidades': typeof OportunidadesRouteWithChildren
+  '/projetos': typeof ProjetosRoute
+  '/propostas': typeof PropostasRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/oportunidades/$id': typeof OportunidadesIdRoute
+  '/propostas/$id': typeof PropostasIdRoute
+  '/oportunidades/': typeof OportunidadesIndexRoute
+  '/propostas/': typeof PropostasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/agentes'
+    | '/clientes'
+    | '/configuracoes'
+    | '/financeiro'
+    | '/oportunidades'
+    | '/projetos'
+    | '/propostas'
+    | '/sitemap.xml'
+    | '/oportunidades/$id'
+    | '/propostas/$id'
+    | '/oportunidades/'
+    | '/propostas/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/agentes'
+    | '/clientes'
+    | '/configuracoes'
+    | '/financeiro'
+    | '/projetos'
+    | '/sitemap.xml'
+    | '/oportunidades/$id'
+    | '/propostas/$id'
+    | '/oportunidades'
+    | '/propostas'
+  id:
+    | '__root__'
+    | '/'
+    | '/agentes'
+    | '/clientes'
+    | '/configuracoes'
+    | '/financeiro'
+    | '/oportunidades'
+    | '/projetos'
+    | '/propostas'
+    | '/sitemap.xml'
+    | '/oportunidades/$id'
+    | '/propostas/$id'
+    | '/oportunidades/'
+    | '/propostas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentesRoute: typeof AgentesRoute
+  ClientesRoute: typeof ClientesRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
+  FinanceiroRoute: typeof FinanceiroRoute
+  OportunidadesRoute: typeof OportunidadesRouteWithChildren
+  ProjetosRoute: typeof ProjetosRoute
+  PropostasRoute: typeof PropostasRouteWithChildren
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/propostas': {
+      id: '/propostas'
+      path: '/propostas'
+      fullPath: '/propostas'
+      preLoaderRoute: typeof PropostasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projetos': {
+      id: '/projetos'
+      path: '/projetos'
+      fullPath: '/projetos'
+      preLoaderRoute: typeof ProjetosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oportunidades': {
+      id: '/oportunidades'
+      path: '/oportunidades'
+      fullPath: '/oportunidades'
+      preLoaderRoute: typeof OportunidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes': {
+      id: '/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agentes': {
+      id: '/agentes'
+      path: '/agentes'
+      fullPath: '/agentes'
+      preLoaderRoute: typeof AgentesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +256,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/propostas/': {
+      id: '/propostas/'
+      path: '/'
+      fullPath: '/propostas/'
+      preLoaderRoute: typeof PropostasIndexRouteImport
+      parentRoute: typeof PropostasRoute
+    }
+    '/oportunidades/': {
+      id: '/oportunidades/'
+      path: '/'
+      fullPath: '/oportunidades/'
+      preLoaderRoute: typeof OportunidadesIndexRouteImport
+      parentRoute: typeof OportunidadesRoute
+    }
+    '/propostas/$id': {
+      id: '/propostas/$id'
+      path: '/$id'
+      fullPath: '/propostas/$id'
+      preLoaderRoute: typeof PropostasIdRouteImport
+      parentRoute: typeof PropostasRoute
+    }
+    '/oportunidades/$id': {
+      id: '/oportunidades/$id'
+      path: '/$id'
+      fullPath: '/oportunidades/$id'
+      preLoaderRoute: typeof OportunidadesIdRouteImport
+      parentRoute: typeof OportunidadesRoute
+    }
   }
 }
 
+interface OportunidadesRouteChildren {
+  OportunidadesIdRoute: typeof OportunidadesIdRoute
+  OportunidadesIndexRoute: typeof OportunidadesIndexRoute
+}
+
+const OportunidadesRouteChildren: OportunidadesRouteChildren = {
+  OportunidadesIdRoute: OportunidadesIdRoute,
+  OportunidadesIndexRoute: OportunidadesIndexRoute,
+}
+
+const OportunidadesRouteWithChildren = OportunidadesRoute._addFileChildren(
+  OportunidadesRouteChildren,
+)
+
+interface PropostasRouteChildren {
+  PropostasIdRoute: typeof PropostasIdRoute
+  PropostasIndexRoute: typeof PropostasIndexRoute
+}
+
+const PropostasRouteChildren: PropostasRouteChildren = {
+  PropostasIdRoute: PropostasIdRoute,
+  PropostasIndexRoute: PropostasIndexRoute,
+}
+
+const PropostasRouteWithChildren = PropostasRoute._addFileChildren(
+  PropostasRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentesRoute: AgentesRoute,
+  ClientesRoute: ClientesRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
+  FinanceiroRoute: FinanceiroRoute,
+  OportunidadesRoute: OportunidadesRouteWithChildren,
+  ProjetosRoute: ProjetosRoute,
+  PropostasRoute: PropostasRouteWithChildren,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
