@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Filter, Search } from "lucide-react";
 
@@ -14,7 +15,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/page-header";
-import { currency, opportunities, scoreColor, statusVariant } from "@/lib/mock-data";
+
+import { supabase } from "@/lib/supabase"; 
+import { currency, scoreColor, statusVariant, Opportunity } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/oportunidades/")({
   head: () => ({
@@ -27,6 +30,40 @@ export const Route = createFileRoute("/oportunidades/")({
 });
 
 function OpList() {
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOportunidades() {
+      // Faz a busca na tabela OPORTUNIDADES
+      const { data, error } = await supabase
+        .from("oportunidades")
+        .select("*")
+        .order("criado_em", { ascending: false });
+      
+      if (error) {
+        console.error("Erro ao buscar vagas:", error);
+      } else if (data) {
+        // Mapeamos o retorno (que está em português) para a estrutura esperada (inglês)
+        const mappedData = data.map((item: any) => ({
+          id: item.ID || item.id,
+          title: item.TITULO || item.titulo,
+          client: item.CLIENTE || item.cliente,
+          platform: item.PLATAFORMA || item.plataforma,
+          stack: item.STACK || item.stack || [],
+          budget: item.ORCAMENTO || item.orcamento,
+          deadline: item.PRAZO || item.prazo,
+          score: item.SCORE || item.score,
+          status: item.STATUS || item.status,
+        }));
+        setOpportunities(mappedData as Opportunity[]);
+      }
+      setLoading(false);
+    }
+
+    fetchOportunidades();
+  }, []);
+
   return (
     <PageContainer>
       <PageHeader
@@ -69,6 +106,22 @@ function OpList() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    Carregando oportunidades da base de dados...
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {!loading && opportunities.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    Nenhuma oportunidade encontrada ainda. Que tal rodar o Scout IA?
+                  </TableCell>
+                </TableRow>
+              )}
+
               {opportunities.map((op) => (
                 <TableRow key={op.id} className="border-border/50">
                   <TableCell className="max-w-[280px] font-medium">
@@ -80,13 +133,13 @@ function OpList() {
                   <TableCell>{op.platform}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {op.stack.slice(0, 2).map((s) => (
+                      {(op.stack || []).slice(0, 2).map((s) => (
                         <Badge key={s} variant="outline" className="border-border/60 bg-background/40 text-xs">
                           {s}
                         </Badge>
                       ))}
-                      {op.stack.length > 2 ? (
-                        <span className="text-xs text-muted-foreground">+{op.stack.length - 2}</span>
+                      {(op.stack || []).length > 2 ? (
+                        <span className="text-xs text-muted-foreground">+{(op.stack || []).length - 2}</span>
                       ) : null}
                     </div>
                   </TableCell>
