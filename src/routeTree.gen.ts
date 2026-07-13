@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as OportunidadesRouteImport } from './routes/oportunidades'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PropostasIndexRouteImport } from './routes/propostas.index'
 import { Route as OportunidadesIndexRouteImport } from './routes/oportunidades.index'
 import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
 
@@ -30,6 +31,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PropostasIndexRoute = PropostasIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PropostasRoute,
+} as any)
 const OportunidadesIndexRoute = OportunidadesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -44,23 +50,25 @@ const OportunidadesIdRoute = OportunidadesIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
-  '/propostas': typeof PropostasRoute
+  '/propostas': typeof PropostasRouteWithChildren
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/oportunidades/': typeof OportunidadesIndexRoute
+  '/propostas/': typeof PropostasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/propostas': typeof PropostasRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/oportunidades': typeof OportunidadesIndexRoute
+  '/propostas': typeof PropostasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
-  '/propostas': typeof PropostasRoute
+  '/propostas': typeof PropostasRouteWithChildren
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/oportunidades/': typeof OportunidadesIndexRoute
+  '/propostas/': typeof PropostasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -70,8 +78,9 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/oportunidades/$id'
     | '/oportunidades/'
+    | '/propostas/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/propostas' | '/oportunidades/$id' | '/oportunidades'
+  to: '/' | '/oportunidades/$id' | '/oportunidades' | '/propostas'
   id:
     | '__root__'
     | '/'
@@ -79,12 +88,13 @@ export interface FileRouteTypes {
     | '/propostas'
     | '/oportunidades/$id'
     | '/oportunidades/'
+    | '/propostas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   OportunidadesRoute: typeof OportunidadesRouteWithChildren
-  PropostasRoute: typeof PropostasRoute
+  PropostasRoute: typeof PropostasRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +119,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/propostas/': {
+      id: '/propostas/'
+      path: '/'
+      fullPath: '/propostas/'
+      preLoaderRoute: typeof PropostasIndexRouteImport
+      parentRoute: typeof PropostasRoute
     }
     '/oportunidades/': {
       id: '/oportunidades/'
@@ -141,10 +158,22 @@ const OportunidadesRouteWithChildren = OportunidadesRoute._addFileChildren(
   OportunidadesRouteChildren,
 )
 
+interface PropostasRouteChildren {
+  PropostasIndexRoute: typeof PropostasIndexRoute
+}
+
+const PropostasRouteChildren: PropostasRouteChildren = {
+  PropostasIndexRoute: PropostasIndexRoute,
+}
+
+const PropostasRouteWithChildren = PropostasRoute._addFileChildren(
+  PropostasRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   OportunidadesRoute: OportunidadesRouteWithChildren,
-  PropostasRoute: PropostasRoute,
+  PropostasRoute: PropostasRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
