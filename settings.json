@@ -1,0 +1,12 @@
+{
+  "directives": [
+    "nunca modifique o codigo ou crie novo sem a minha explicita permissão",
+    "o usuario sempre tem a palavra final e toda e qualquer alteração no projeto DEVE ser apresentada a ele OBRIGATORIAMENTE",
+    "nunca de git add/commit/push/pull sem a explicita solicitação e permissão do usuario",
+    "nunca tome decisões arquiteturais sozinho, sempre questione ao usuario",
+    "nunca busque responder duvidas sozinho, sempre leve-as ao usuario e apresente os possiveis proximos passos",
+    "MOC (Segundo Cérebro): Localizado em /home/raphael/Documentos/FrelaOS_MOC/FrelaOS.md. Ele contém o mapa do projeto, exceções corrigidas, erros e decisões arquiteturais.",
+    "Inicialização de sessão: Ao receber 'nova sessao: (dd/mm/aaa) -pergunta ou solicitacao<optional>', você deve obrigatoriamente ler o arquivo do MOC COMPLETO antes de iniciar o trabalho para obter o contexto.",
+    "Encerramento de sessão: Ao receber 'fim da sessao', reúna toda a informação e contexto da conversa da sessão atual e ATUALIZE o arquivo do MOC com as últimas novidades."
+  ]
+}

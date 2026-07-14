@@ -6,14 +6,16 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/lib/supabase";
 
 function NotFoundComponent() {
   return (
@@ -121,25 +123,53 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+      const path = window.location.pathname;
+      if (!session && path !== '/login' && path !== '/onboarding') {
+        router.navigate({ to: '/login' });
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+      const path = window.location.pathname;
+      if (!session && path !== '/login' && path !== '/onboarding') {
+        router.navigate({ to: '/login' });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  const isAuthRoute = pathname === '/login' || pathname === '/onboarding';
+  const showUI = isAuthenticated && !isAuthRoute;
 
   return (
     <QueryClientProvider client={queryClient}>
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background text-foreground">
-          <AppSidebar />
+          {showUI && <AppSidebar />}
           <div className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl">
-              <SidebarTrigger />
-              <div className="ml-auto flex items-center gap-2">
-                <div className="hidden items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground sm:flex">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-                  </span>
-                  5 agentes ativos
+            {showUI && (
+              <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl">
+                <SidebarTrigger />
+                <div className="ml-auto flex items-center gap-2">
+                  {/* <div className="hidden items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground sm:flex">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+                    </span>
+                    5 agentes ativos
+                  </div> */}
                 </div>
-              </div>
-            </header>
+              </header>
+            )}
             <main className="min-w-0 flex-1">
               <Outlet />
             </main>

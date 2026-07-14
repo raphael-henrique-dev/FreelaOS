@@ -87,8 +87,8 @@ export function currency(v: number) {
 }
 
 export function scoreColor(score: number) {
-  if (score >= 85) return "text-success";
-  if (score >= 70) return "text-warning";
+  if (score >= 70) return "text-success";
+  if (score >= 50) return "text-warning";
   return "text-destructive";
 }
 

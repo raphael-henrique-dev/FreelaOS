@@ -13,6 +13,8 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as ProjetosRouteImport } from './routes/projetos'
 import { Route as OportunidadesRouteImport } from './routes/oportunidades'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
@@ -41,6 +43,16 @@ const ProjetosRoute = ProjetosRouteImport.update({
 const OportunidadesRoute = OportunidadesRouteImport.update({
   id: '/oportunidades',
   path: '/oportunidades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
@@ -95,6 +107,8 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
@@ -110,6 +124,8 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
   '/projetos': typeof ProjetosRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
@@ -124,6 +140,8 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
@@ -141,6 +159,8 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/financeiro'
+    | '/login'
+    | '/onboarding'
     | '/oportunidades'
     | '/projetos'
     | '/propostas'
@@ -156,6 +176,8 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/financeiro'
+    | '/login'
+    | '/onboarding'
     | '/projetos'
     | '/sitemap.xml'
     | '/oportunidades/$id'
@@ -169,6 +191,8 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/financeiro'
+    | '/login'
+    | '/onboarding'
     | '/oportunidades'
     | '/projetos'
     | '/propostas'
@@ -185,6 +209,8 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  LoginRoute: typeof LoginRoute
+  OnboardingRoute: typeof OnboardingRoute
   OportunidadesRoute: typeof OportunidadesRouteWithChildren
   ProjetosRoute: typeof ProjetosRoute
   PropostasRoute: typeof PropostasRouteWithChildren
@@ -219,6 +245,20 @@ declare module '@tanstack/react-router' {
       path: '/oportunidades'
       fullPath: '/oportunidades'
       preLoaderRoute: typeof OportunidadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -321,6 +361,8 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FinanceiroRoute: FinanceiroRoute,
+  LoginRoute: LoginRoute,
+  OnboardingRoute: OnboardingRoute,
   OportunidadesRoute: OportunidadesRouteWithChildren,
   ProjetosRoute: ProjetosRoute,
   PropostasRoute: PropostasRouteWithChildren,

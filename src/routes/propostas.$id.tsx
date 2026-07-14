@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowLeft, Save, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -8,12 +8,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/page-header";
-import { currency, opportunities } from "@/lib/mock-data";
+import { currency, statusVariant } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/propostas/$id")({
-  loader: ({ params }) => {
-    const op = opportunities.find((o) => o.id === params.id);
-    if (!op) throw notFound();
+  loader: async ({ params }) => {
+    const { data } = await supabase.from("oportunidades").select("*").eq("id", params.id).single();
+    if (!data) throw notFound();
+
+    const op = {
+      id: data.id,
+      title: data.titulo,
+      client: data.cliente || "Confidencial",
+      platform: data.plataforma,
+      status: data.status,
+      description: data.descricao,
+      budget: data.orcamento,
+      deadline: data.prazo,
+      stack: data.stack || [],
+      score: data.score || 0,
+    };
     return { op };
   },
   head: ({ loaderData }) => ({
@@ -29,24 +43,37 @@ export const Route = createFileRoute("/propostas/$id")({
 
 function PropostaEditor() {
   const { op } = Route.useLoaderData();
-  const initial = `Olá, ${op.client}!
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [modelo, setModelo] = useState("");
 
-Analisei o projeto "${op.title}" e vejo forte compatibilidade com meu perfil. Tenho experiência sólida com ${op.stack.join(", ")} e já entreguei escopos similares nos últimos 12 meses.
+  useEffect(() => {
+    async function fetchRedator() {
+      setLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) return;
+        
+        const res = await fetch("http://localhost:8000/api/redator/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vaga_id: op.id, user_id: session.user.id })
+        });
+        
+        if (!res.ok) throw new Error("Erro na API");
+        const json = await res.json();
+        setText(json.proposta || "");
+        setModelo(json.modelo_utilizado || "padrao");
+      } catch (e) {
+        toast.error("Falha ao gerar proposta com Redator IA.");
+        setText("Erro ao conectar com o Agente Redator.");
+      } finally {
+        setLoading(false);
+      }
+    }
 
-Minha proposta para o escopo descrito:
-
-• Discovery técnico + wireframes de referência (2 dias)
-• Desenvolvimento incremental com entregas semanais
-• Testes E2E, revisão de acessibilidade e deploy
-
-Investimento sugerido: ${currency(op.budget)}
-Prazo: ${op.deadline}
-
-Posso enviar mais amostras do meu portfólio se fizer sentido. Fico à disposição para uma call rápida.
-
-Abraço,
-Lucas Ribeiro`;
-  const [text, setText] = useState(initial);
+    fetchRedator();
+  }, [op.id]);
 
   return (
     <PageContainer>
@@ -67,13 +94,14 @@ Lucas Ribeiro`;
                 <h1 className="truncate text-xl font-semibold">{op.title}</h1>
               </div>
               <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
-                <Sparkles className="mr-1 h-3 w-3" /> Gerada por Redator IA
+                <Sparkles className="mr-1 h-3 w-3" /> Gerada pelo Redator IA {modelo ? `(${modelo})` : ""}
               </Badge>
             </div>
 
             <Textarea
-              value={text}
+              value={loading ? "O Redator IA está escrevendo a proposta baseada no seu perfil..." : text}
               onChange={(e) => setText(e.target.value)}
+              disabled={loading}
               className="min-h-[520px] resize-none border-border/50 bg-background/40 font-mono text-sm leading-relaxed"
             />
 

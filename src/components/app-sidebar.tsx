@@ -1,4 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import {
   LayoutDashboard,
   Compass,
@@ -9,6 +11,7 @@ import {
   Bot,
   Settings,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 
 import {
@@ -40,6 +43,43 @@ const ai = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const [userName, setUserName] = useState("Carregando...");
+  const [userInitials, setUserInitials] = useState("");
+
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('perfis')
+        .select('nome')
+        .eq('id', user.id)
+        .single();
+        
+      let name = "Usuário";
+      if (data && data.nome) {
+        name = data.nome;
+      } else if (user.user_metadata?.full_name) {
+        name = user.user_metadata.full_name;
+      }
+      
+      setUserName(name);
+      
+      const parts = name.split(" ").filter(Boolean);
+      if (parts.length > 1) {
+        setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
+      } else if (parts.length === 1) {
+        setUserInitials(parts[0].substring(0, 2).toUpperCase());
+      }
+    }
+    loadProfile();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   const isActive = (url: string, exact?: boolean) =>
     exact ? pathname === url : pathname === url || pathname.startsWith(url + "/");
 
@@ -96,14 +136,25 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
-        <div className="flex items-center gap-2 px-1 py-1">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold">
-            LR
+        <div className="flex items-center justify-between px-1 py-2">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+              {userInitials || "U"}
+            </div>
+            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <p className="truncate text-sm font-medium">{userName.split(" ")[0] + " " + userName.split(" ")[1]}</p>
+              {/* Ocultando o plano por enquanto */}
+              {/* <p className="truncate text-[11px] text-muted-foreground">Plano Pro · 5 agentes</p> */}
+            </div>
           </div>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-medium">Lucas Ribeiro</p>
-            <p className="truncate text-[11px] text-muted-foreground">Plano Pro · 5 agentes</p>
-          </div>
+          
+          <button 
+            onClick={handleLogout}
+            className="group-data-[collapsible=icon]:hidden ml-2 p-2 text-muted-foreground hover:text-red-500 transition-colors rounded-md hover:bg-red-500/10"
+            title="Sair da conta"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </SidebarFooter>
     </Sidebar>

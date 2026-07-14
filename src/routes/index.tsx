@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import {
   Area,
   AreaChart,
@@ -8,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowUpRight, Briefcase, CheckCircle2, PercentSquare, Send, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Briefcase, CheckCircle2, PercentSquare, Send, TrendingUp, Sparkles } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +52,74 @@ const stats = [
 ];
 
 function Dashboard() {
+  const [latestOps, setLatestOps] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [opsToday, setOpsToday] = useState(0);
+  const [dynamicAgents, setDynamicAgents] = useState<any[]>([
+    { id: "1", name: "Scout IA", emoji: "🕵️", status: "monitoring", color: "#6366f1", lastActivity: "Conectando..." },
+    { id: "2", name: "Analista IA", emoji: "🧠", status: "idle", color: "#ec4899", lastActivity: "Conectando..." },
+    { id: "3", name: "Redator IA", emoji: "✍️", status: "idle", color: "#14b8a6", lastActivity: "Aguardando comando" },
+  ]);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      let query = supabase.from("oportunidades").select("*");
+      if (session?.user?.id) {
+        query = query.eq("perfil_id", session.user.id);
+      }
+
+      const { data, error } = await query
+        .order("criado_em", { ascending: false })
+        .limit(100);
+
+      if (data) {
+        setLatestOps(data.slice(0, 5));
+
+        // 1. Conectar Gráfico de Oportunidades
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return d.toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', '');
+        });
+
+        const chart = last7Days.map(dayStr => {
+          const count = data.filter(op => {
+            const opDate = new Date(op.criado_em).toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', '');
+            return opDate === dayStr;
+          }).length;
+          return { day: dayStr, count };
+        });
+        setChartData(chart);
+
+        // 2. Conectar Painel de Agentes
+        const now = new Date();
+        const lastOp = data[0] ? new Date(data[0].criado_em) : null;
+        const diffMinutes = lastOp ? Math.floor((now.getTime() - lastOp.getTime()) / 60000) : Infinity;
+        
+        let tempoStr = "Sem atividade";
+        if (diffMinutes < 1) tempoStr = "Agora mesmo";
+        else if (diffMinutes < 60) tempoStr = `Há ${diffMinutes} min`;
+        else if (diffMinutes < 1440) tempoStr = `Há ${Math.floor(diffMinutes / 60)}h`;
+        
+        const isWorking = diffMinutes < 10;
+
+        setDynamicAgents([
+          { id: "1", name: "Scout IA", emoji: "🕵️", status: isWorking ? "working" : "monitoring", color: "#6366f1", lastActivity: tempoStr },
+          { id: "2", name: "Analista IA", emoji: "🧠", status: isWorking ? "working" : "idle", color: "#ec4899", lastActivity: tempoStr },
+          { id: "3", name: "Redator IA", emoji: "✍️", status: "idle", color: "#14b8a6", lastActivity: "Aguardando comando" },
+        ]);
+        // 3. Oportunidades hoje
+        const todayStr = new Date().toLocaleDateString("pt-BR");
+        const countToday = data.filter(op => new Date(op.criado_em).toLocaleDateString("pt-BR") === todayStr).length;
+        setOpsToday(countToday);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
+
   return (
     <div className="relative">
       <div className="pointer-events-none absolute inset-x-0 -top-24 h-64 bg-gradient-glow opacity-70" />
@@ -58,7 +128,7 @@ function Dashboard() {
           <div>
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Bom te ver de volta</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-              Sua equipe de IA <span className="text-gradient">produziu 12 oportunidades</span> hoje.
+              Sua equipe de IA <span className="text-gradient">produziu {opsToday} {opsToday === 1 ? 'oportunidade' : 'oportunidades'}</span> hoje.
             </h1>
           </div>
           <Button asChild className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
@@ -94,7 +164,7 @@ function Dashboard() {
             </CardHeader>
             <CardContent className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={opportunitiesPerDay} margin={{ left: -20, right: 8, top: 8 }}>
+                <AreaChart data={chartData} margin={{ left: -20, right: 8, top: 8 }}>
                   <defs>
                     <linearGradient id="opGrad" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0%" stopColor="oklch(0.68 0.19 265)" stopOpacity={0.6} />
@@ -102,7 +172,7 @@ function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="oklch(1 0 0 / 6%)" vertical={false} />
-                  <XAxis dataKey="day" stroke="oklch(0.65 0.015 260)" fontSize={11} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="day" stroke="oklch(0.65 0.015 260)" fontSize={11} tickLine={false} axisLine={false} style={{ textTransform: "capitalize" }} />
                   <YAxis stroke="oklch(0.65 0.015 260)" fontSize={11} tickLine={false} axisLine={false} />
                   <Tooltip
                     contentStyle={{
@@ -124,7 +194,7 @@ function Dashboard() {
               <p className="text-xs text-muted-foreground">Atividade em tempo real</p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {agents.map((a) => (
+              {dynamicAgents.map((a) => (
                 <div key={a.id} className="flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 p-3">
                   <div
                     className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-lg"
@@ -149,7 +219,7 @@ function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div>
               <CardTitle className="text-base">Últimas oportunidades</CardTitle>
-              <p className="text-xs text-muted-foreground">Descobertas nas últimas 6 horas</p>
+              <p className="text-xs text-muted-foreground">Descobertas pelo Scout IA nas últimas horas</p>
             </div>
             <Button asChild variant="ghost" size="sm">
               <Link to="/oportunidades">Ver todas</Link>
@@ -159,30 +229,64 @@ function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead>Título</TableHead>
-                  <TableHead>Plataforma</TableHead>
+                  <TableHead>Projeto</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {opportunities.slice(0, 5).map((op) => (
-                  <TableRow key={op.id} className="border-border/50">
-                    <TableCell className="font-medium">
-                      <Link to="/oportunidades/$id" params={{ id: op.id }} className="hover:text-primary">
-                        {op.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">{op.client} · {op.createdAt}</p>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{op.platform}</TableCell>
-                    <TableCell>{currency(op.budget)}</TableCell>
-                    <TableCell className={`font-semibold ${scoreColor(op.score)}`}>{op.score}</TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant(op.status)}>{op.status}</Badge>
+                {latestOps.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                      Nenhuma oportunidade analisada ainda.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  latestOps.map((op) => (
+                    <TableRow key={op.id} className="border-border/50">
+                      <TableCell className="max-w-[400px]">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <Link to="/oportunidades/$id" params={{ id: op.id }} className="font-medium hover:text-primary leading-tight">
+                              {op.titulo}
+                            </Link>
+                            <Badge variant="outline" className="text-[10px] whitespace-nowrap bg-background/50">{op.plataforma}</Badge>
+                          </div>
+                          
+                          {/* Stacks */}
+                          {op.stack && op.stack.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {op.stack.slice(0, 3).map((s: string) => (
+                                <span key={s} className="text-[10px] px-1.5 py-0.5 rounded-md border border-border/50 bg-background/40 text-muted-foreground">
+                                  {s}
+                                </span>
+                              ))}
+                              {op.stack.length > 3 && <span className="text-[10px] text-muted-foreground">+{op.stack.length - 3}</span>}
+                            </div>
+                          )}
+
+                          {/* Parecer do Analista IA */}
+                          {/* {op.explicacao_score && (
+                            <div className="mt-1 flex items-start gap-1.5 p-2 rounded-lg bg-primary/5 border border-primary/10">
+                              <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                              <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                                <span className="font-medium text-foreground/80">Parecer IA:</span> {op.explicacao_score}
+                              </p>
+                            </div>
+                          )} */}
+                        </div>
+                      </TableCell>
+                      <TableCell className="align-top pt-4">R$ {op.orcamento}</TableCell>
+                      <TableCell className="align-top pt-4">
+                        <span className={`font-semibold ${scoreColor(op.score || 0)}`}>{op.score || 0}/100</span>
+                      </TableCell>
+                      <TableCell className="align-top pt-4">
+                        <Badge variant={statusVariant(op.status)}>{op.status}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
