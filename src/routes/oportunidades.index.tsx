@@ -85,6 +85,26 @@ function OpList() {
     setOpportunities(prev => prev.filter(op => op.id !== id));
   }
 
+  async function handleIgnorarTodas() {
+    if (!confirm("Deseja realmente ignorar (remover) TODAS as oportunidades? Essa ação não pode ser desfeita.")) return;
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+
+    const { error } = await supabase
+      .from("oportunidades")
+      .delete()
+      .eq("perfil_id", session.user.id);
+      
+    if (error) {
+      toast.error("Erro ao remover oportunidades: " + error.message);
+      return;
+    }
+    
+    setOpportunities([]);
+    toast.success("Todas as oportunidades foram ignoradas.");
+  }
+
   useEffect(() => {
     async function fetchOportunidades() {
       // Faz a busca na tabela OPORTUNIDADES
@@ -131,6 +151,14 @@ function OpList() {
           <>
             <Button variant="outline" size="sm">
               <Filter className="mr-2 h-4 w-4" /> Filtrar
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+              onClick={handleIgnorarTodas}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Ignorar todas oportunidades
             </Button>
             <Button 
               size="sm" 

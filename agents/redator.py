@@ -98,6 +98,10 @@ Orçamento: R$ {vaga.get('orcamento')}
                 resposta = client.models.generate_content(model='gemini-3.5-flash', contents=sys_prompt)
                 
                 texto_proposta = resposta.text.strip()
+                
+                # Salva a proposta no banco de dados na coluna proposta_ia
+                supabase.table("oportunidades").update({"proposta_ia": texto_proposta}).eq("id", req.vaga_id).execute()
+                
                 return {"proposta": texto_proposta, "modelo_utilizado": modelo_ativo}
 
             except Exception as api_err:
@@ -106,7 +110,17 @@ Orçamento: R$ {vaga.get('orcamento')}
                     print(f"[REDATOR RETRY] Gemini indisponível (Erro: {api_err}). Aguardando {wait_time}s...")
                     time.sleep(wait_time)
                 else:
-                    raise api_err
+                    print(f"[REDATOR FALLBACK] Gemini 3.5 falhou {max_retries} vezes. Acionando Gemini 3.1 Flash-Lite...")
+                    try:
+                        resposta = client.models.generate_content(model='gemini-3.1-flash-lite', contents=sys_prompt)
+                        texto_proposta = resposta.text.strip()
+
+                        supabase.table("oportunidades").update({"proposta_ia": texto_proposta}).eq("id", req.vaga_id).execute()
+
+                        return {"proposta": texto_proposta, "modelo_utilizado": modelo_ativo}
+                    
+                    except Exception as fallback_err:
+                        raise Exception(f"Ambos os modelos falharam. Erro final: {fallback_err}")
 
     except HTTPException as he:
         raise he

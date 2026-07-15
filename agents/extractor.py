@@ -8,6 +8,7 @@ from playwright.sync_api import sync_playwright
 
 from scout import analisar_vaga, VagaBruta
 from analista import avaliar_oportunidade, AvaliacaoRequest
+from redator import gerar_proposta, RedatorRequest
 
 router = APIRouter()
 
@@ -30,8 +31,17 @@ def executar_extracao(user_id: str):
     perfil_res = supabase.table("perfis").select("habilidades").eq("id", user_id).execute()
     habilidades = perfil_res.data[0].get("habilidades", []) if perfil_res.data else []
     
-    config_res = supabase.table("configuracoes_usuario").select("integracoes").eq("perfil_id", user_id).execute()
-    integracoes = config_res.data[0].get("integracoes", {}) if config_res.data else {}
+    config_res = supabase.table("configuracoes_usuario").select("*").eq("perfil_id", user_id).execute()
+    
+    integracoes = {}
+    limite_automacao = 70
+    automacao_ativada = True
+    if config_res.data:
+        integracoes = config_res.data[0].get("integracoes", {})
+        modelos_proposta = config_res.data[0].get("modelos_proposta", {})
+        if isinstance(modelos_proposta, dict):
+            limite_automacao = modelos_proposta.get("limite_automacao", 70)
+            automacao_ativada = modelos_proposta.get("automacao_ativada", True)
     
     config_99 = integracoes.get("99freelas", {})
     # Caso a flag não exista no JSON velho, assume True por padrão
@@ -128,7 +138,24 @@ def executar_extracao(user_id: str):
                         # 4. Dispara o Analista IA internamente
                         print(f"[EXTRACTOR] Scout terminou. Acionando Analista IA para {vaga_id}...")
                         analista_req = AvaliacaoRequest(vaga_id=vaga_id, user_id=user_id)
-                        avaliar_oportunidade(analista_req)
+                        analista_res = avaliar_oportunidade(analista_req)
+                        score = analista_res.get("score", 0)
+                        
+                        # 5. Dispara o Redator IA automaticamente se o score bater a meta E se estiver ativado
+                        if automacao_ativada and score >= limite_automacao:
+                            print(f"[EXTRACTOR] Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
+                            # Pausa de 15s antes de chamar outra IA pra não levar block do Gemini
+                            time.sleep(15)
+                            try:
+                                gerar_proposta(RedatorRequest(vaga_id=vaga_id, user_id=user_id))
+                                print(f"[EXTRACTOR] Proposta gerada com sucesso para a vaga {vaga_id}!")
+                            except Exception as redator_err:
+                                print(f"[EXTRACTOR] Erro ao gerar proposta: {redator_err}")
+                        else:
+                            if not automacao_ativada:
+                                print(f"[EXTRACTOR] Automação do Redator IA está desligada nas configurações.")
+                            else:
+                                print(f"[EXTRACTOR] Score {score} abaixo da meta ({limite_automacao}). Ignorando Redator IA.")
                         
                         print(f"[EXTRACTOR] Ciclo finalizado para a vaga: {titulo}\n")
                         # Pausa de 15 segundos entre vagas para garantir que o limite gratuito do Gemini (15 RPM) não seja estourado

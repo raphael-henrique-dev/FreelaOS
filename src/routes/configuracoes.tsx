@@ -57,6 +57,8 @@ function ConfigPage() {
   const [integracoes, setIntegracoes] = useState(defaultIntegrations);
   const [modeloAtivo, setModeloAtivo] = useState("padrao");
   const [promptPersonalizado, setPromptPersonalizado] = useState("");
+  const [limiteAutomacao, setLimiteAutomacao] = useState(70);
+  const [automacaoAtivada, setAutomacaoAtivada] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -114,6 +116,12 @@ function ConfigPage() {
             } else {
               setModeloAtivo(config.modelos_proposta.ativo || "padrao");
               setPromptPersonalizado(config.modelos_proposta.personalizado_prompt || "");
+              if (config.modelos_proposta.limite_automacao !== undefined) {
+                setLimiteAutomacao(config.modelos_proposta.limite_automacao);
+              }
+              if (config.modelos_proposta.automacao_ativada !== undefined) {
+                setAutomacaoAtivada(config.modelos_proposta.automacao_ativada);
+              }
             }
           }
         } else {
@@ -122,7 +130,7 @@ function ConfigPage() {
           await supabase.from("configuracoes_usuario").insert({
             perfil_id: user.id,
             integracoes: defaultIntJson,
-            modelos_proposta: { ativo: "padrao", personalizado_prompt: "" }
+            modelos_proposta: { ativo: "padrao", personalizado_prompt: "", limite_automacao: 70, automacao_ativada: true }
           });
         }
       } catch (error) {
@@ -160,7 +168,7 @@ function ConfigPage() {
         .from("configuracoes_usuario")
         .update({
           integracoes: integracoesJson,
-          modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado }
+          modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada }
         })
         .eq("perfil_id", userId);
 
@@ -353,6 +361,33 @@ function ConfigPage() {
                 />
               </div>
             )}
+
+            <div className="pt-4 border-t border-border/50">
+              <Label className="text-xs text-muted-foreground flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span>Automação do Redator IA</span>
+                  <Switch 
+                    checked={automacaoAtivada}
+                    onCheckedChange={setAutomacaoAtivada}
+                  />
+                </div>
+                <span className={`font-mono px-2 py-0.5 rounded text-xs transition-colors ${automacaoAtivada ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  {limiteAutomacao} / 100
+                </span>
+              </Label>
+              <p className="text-[11px] text-muted-foreground mb-3 mt-2">
+                Se ativado, quando uma vaga receber um Score do Analista IA maior ou igual ao limite abaixo, o Redator IA vai rascunhar a proposta automaticamente em background.
+              </p>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={limiteAutomacao} 
+                onChange={(e) => setLimiteAutomacao(parseInt(e.target.value))}
+                disabled={!automacaoAtivada}
+                className={`w-full accent-primary ${!automacaoAtivada ? 'opacity-50 cursor-not-allowed' : ''}`}
+              />
+            </div>
           </CardContent>
         </Card>
 

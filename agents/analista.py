@@ -78,19 +78,26 @@ def avaliar_oportunidade(req: AvaliacaoRequest):
         }}
         """
 
-        # Chama a IA com Retry
+        # Chama a IA com Retry e Fallback
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                resposta = client.models.generate_content(model='gemini-3.1-flash-lite', contents=prompt)
+                resposta = client.models.generate_content(model='gemini-3.5-flash', contents=prompt)
                 break
             except Exception as api_err:
                 if attempt < max_retries - 1:
                     wait_time = 15 * (attempt + 1)
-                    print(f"[ANALISTA RETRY] Gemini indisponível no momento. Tentando novamente em {wait_time} segundos...")
+                    print(f"[ANALISTA RETRY] Gemini 3.5 falhou. Tentando novamente em {wait_time} segundos...")
                     time.sleep(wait_time)
                 else:
-                    raise api_err
+                    # Se falhou 3 vezes, aciona o Fallback
+                    print("[ANALISTA FALLBACK] Gemini 3.5 falhou 3 vezes. Acionando Gemini 3.1 Flash-Lite...")
+                    try:
+                        resposta = client.models.generate_content(model='gemini-3.1-flash-lite', contents=prompt)
+                    except Exception as fallback_err:
+                        # Se o plano B também cair, levanta o erro
+                        raise Exception(f"Ambos os modelos falharam. Erro final: {fallback_err}")
+                    
         clean_json = resposta.text.replace("```json", "").replace("```", "").strip()
         dados_ia = json.loads(clean_json)
 

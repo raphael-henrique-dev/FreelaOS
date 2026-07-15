@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Save, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Send, Sparkles, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/propostas/$id")({
       deadline: data.prazo,
       stack: data.stack || [],
       score: data.score || 0,
+      proposta_ia: data.proposta_ia || "",
     };
     return { op };
   },
@@ -47,39 +48,45 @@ function PropostaEditor() {
   const [loading, setLoading] = useState(false);
   const [modelo, setModelo] = useState("");
 
-  useEffect(() => {
-    async function fetchRedator() {
-      setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user?.id) return;
-        
-        const res = await fetch("http://localhost:8000/api/redator/draft", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vaga_id: op.id, user_id: session.user.id })
-        });
-        
-        if (!res.ok) throw new Error("Erro na API");
-        const json = await res.json();
-        setText(json.proposta || "");
-        setModelo(json.modelo_utilizado || "padrao");
-      } catch (e) {
-        toast.error("Falha ao gerar proposta com Redator IA.");
-        setText("Erro ao conectar com o Agente Redator.");
-      } finally {
-        setLoading(false);
-      }
+  async function fetchRedatorAPI(isManual: boolean = false) {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return;
+      
+      const res = await fetch("http://localhost:8000/api/redator/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vaga_id: op.id, user_id: session.user.id })
+      });
+      
+      if (!res.ok) throw new Error("Erro na API");
+      const json = await res.json();
+      setText(json.proposta || "");
+      setModelo(json.modelo_utilizado || "padrao");
+      if (isManual) toast.success("Nova proposta gerada com sucesso!");
+    } catch (e) {
+      toast.error("Falha ao gerar proposta com Redator IA.");
+      setText("Erro ao conectar com o Agente Redator.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    fetchRedator();
+  useEffect(() => {
+    if (op.proposta_ia) {
+      setText(op.proposta_ia);
+      setModelo("Background Automático");
+    } else {
+      fetchRedatorAPI(false);
+    }
   }, [op.id]);
 
   return (
     <PageContainer>
       <div>
         <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/oportunidades/$id" params={{ id: op.id }}>
+          <Link to="/propostas">
             <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
           </Link>
         </Button>
@@ -106,7 +113,10 @@ function PropostaEditor() {
             />
 
             <div className="flex flex-wrap justify-end gap-2 border-t border-border/50 pt-4">
-              <Button variant="outline" onClick={() => toast.success("Proposta salva como rascunho")}>
+              <Button variant="outline" onClick={() => fetchRedatorAPI(true)} disabled={loading}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Gerar nova proposta
+              </Button>
+              <Button variant="outline" onClick={() => toast.success("Proposta salva como rascunho")} disabled={loading}>
                 <Save className="mr-2 h-4 w-4" /> Salvar
               </Button>
               <Button

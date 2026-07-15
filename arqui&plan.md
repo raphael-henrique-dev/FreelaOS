@@ -42,16 +42,16 @@ O custo com as APIs de IA (OpenAI, Anthropic, Google) é baseado no uso (*pay-as
 
 Para evitar um escopo inatingível inicial, o desenvolvimento será focado em fases, começando pelo que gera mais valor imediato: a curadoria de vagas.
 
-### Fase 1: MVP do Scout e Analista
-- Interface de Dashboard mostrando as oportunidades encontradas.
-- Script de integração com 1 plataforma (ex: Workana ou um Feed RSS genérico).
-- Avaliação automática da vaga gerando o "Score de Compatibilidade".
+### Fase 1: MVP do Scout e Analista (CONCLUÍDO)
+- [x] Interface de Dashboard mostrando as oportunidades encontradas.
+- [x] Script de integração com 1 plataforma (99Freelas).
+- [x] Avaliação automática da vaga gerando o "Score de Compatibilidade" e explicação.
 - **Objetivo alcançado:** O usuário para de procurar vagas manualmente e apenas avalia as que têm fit com o seu perfil.
 
-### Fase 2: Geração de Propostas (Redator IA)
-- Adição do botão "Gerar Proposta" nos cards de vagas aprovadas pelo usuário.
-- Configuração de perfil do usuário (skills, portfólio) para guiar a IA.
-- Editor para revisar e aprovar a proposta antes do envio manual.
+### Fase 2: Geração de Propostas (Redator IA) (CONCLUÍDO)
+- [x] Adição do botão "Gerar Proposta" nos cards de vagas aprovadas pelo usuário.
+- [x] Configuração de perfil do usuário (skills, portfólio) e Tons de Proposta para guiar a IA.
+- [x] Editor interativo para revisar a proposta gerada antes de salvar como rascunho ou enviar.
 
 ### Fase 3: Acompanhamento e Financeiro (Assistente e Financeiro IA)
 - Painel estilo Kanban para arrastar projetos (Lead -> Em negociação -> Fechado).

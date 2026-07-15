@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate, redirect } from "@tanstack/react-router";
 import { ArrowLeft, Sparkles, Trash2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,7 @@ export const Route = createFileRoute("/oportunidades/$id")({
       score: data.score || 0,
       explicacao: data.explicacao_score || "Nenhum parecer gerado.",
       url: data.url || "",
+      proposta_ia: data.proposta_ia || "",
     };
     return { op, prevId, nextId };
   },
@@ -182,6 +183,14 @@ function OpDetail() {
                   <Sparkles className="mr-2 h-4 w-4" /> 
                   {loadingParecer ? "Analisando..." : "Gerar parecer do Analista IA"}
                 </Button>
+              ) : op.proposta_ia && op.proposta_ia.trim() !== "" ? (
+                <Button
+                  size="lg"
+                  className="flex-1 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+                  onClick={() => navigate({ to: "/propostas/$id", params: { id: op.id } })}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" /> Ver proposta gerada por IA
+                </Button>
               ) : (
                 <Button
                   size="lg"
@@ -195,7 +204,7 @@ function OpDetail() {
               {op.url && (
                 <Button size="lg" variant="outline" asChild>
                   <a href={op.url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" /> Vaga Original
+                    <ExternalLink className="mr-2 h-4 w-4" /> URL da vaga
                   </a>
                 </Button>
               )}

@@ -52,7 +52,7 @@ def analisar_vaga(vaga: VagaBruta):
     
 
     try:
-        # Chama a inteligência do Gemini com Retry (Trata limite da API Gratuita)
+        # Chama a inteligência do Gemini com Retry (inicialmente, não achei necessario usar o 3.5 para esta tarefa)
         max_retries = 3
         for attempt in range(max_retries):
             try:
