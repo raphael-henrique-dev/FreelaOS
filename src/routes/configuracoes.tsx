@@ -133,6 +133,18 @@ function ConfigPage() {
             modelos_proposta: { ativo: "padrao", personalizado_prompt: "", limite_automacao: 70, automacao_ativada: true }
           });
         }
+        
+        // Verifica status da conexão no 99Freelas
+        try {
+          const authRes = await fetch(`http://localhost:8000/api/auth/99freelas/status?user_id=${user.id}`);
+          if (authRes.ok) {
+            const authJson = await authRes.json();
+            setIsConnected99(authJson.connected);
+          }
+        } catch (e) {
+          console.error("Erro ao checar status do 99freelas:", e);
+        }
+
       } catch (error) {
         console.error("Erro ao carregar configurações", error);
       } finally {
@@ -202,6 +214,61 @@ function ConfigPage() {
 
   function toggleIgnoreExclusive(id: string, checked: boolean) {
     setIntegracoes(prev => prev.map(int => int.id === id ? { ...int, ignoreExclusive: checked } : int));
+  };
+
+  const [connecting99, setConnecting99] = useState(false);
+  const [isConnected99, setIsConnected99] = useState(false);
+  const handleConnect99Freelas = async () => {
+    setConnecting99(true);
+    toast.info("Abrindo navegador... Faça o login na janela que aparecerá.", { duration: 8000 });
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Usuário não autenticado");
+
+      const res = await fetch("http://localhost:8000/api/auth/99freelas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: session.user.id })
+      });
+
+      const json = await res.json();
+      if (res.ok && json.status === "success") {
+        toast.success(json.message);
+        setIsConnected99(true);
+      } else {
+        toast.error(json.message || "Erro desconhecido ao conectar.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Falha de conexão com a API.");
+    } finally {
+      setConnecting99(false);
+    }
+  };
+
+  const handleDisconnect99Freelas = async () => {
+    if (!confirm("Tem certeza que deseja desconectar o 99Freelas? O bot não poderá mais enviar propostas automaticamente.")) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch("http://localhost:8000/api/auth/99freelas", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: session.user.id })
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        toast.success(json.message);
+        setIsConnected99(false);
+      } else {
+        toast.error(json.message || "Erro ao desconectar.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Falha de conexão com a API.");
+    }
   };
 
   if (loadingData) {
@@ -417,16 +484,45 @@ function ConfigPage() {
                 </div>
                 
                 {i.id === "99freelas" && i.enabled && (
-                  <div className="mt-2 flex items-center justify-between border-t border-border/50 pt-3">
-                    <Label htmlFor="ignore-exclusive" className="text-xs text-muted-foreground cursor-pointer">
-                      Ignorar projetos exclusivos (assinantes Premium)?
-                    </Label>
-                    <Switch
-                      id="ignore-exclusive"
-                      checked={i.ignoreExclusive}
-                      onCheckedChange={(checked) => toggleIgnoreExclusive(i.id, checked)}
-                      className="scale-75"
-                    />
+                  <div className="mt-2 flex flex-col border-t border-border/50 pt-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="ignore-exclusive" className="text-xs text-muted-foreground cursor-pointer">
+                        Ignorar projetos exclusivos (assinantes Premium)?
+                      </Label>
+                      <Switch
+                        id="ignore-exclusive"
+                        checked={i.ignoreExclusive}
+                        onCheckedChange={(checked) => toggleIgnoreExclusive(i.id, checked)}
+                        className="scale-75"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center space-x-3">
+                      <p className="text-[12px] text-muted-foreground max-w-[200px]">
+                        Conexão com a plataforma: 
+                      </p>
+                      {isConnected99 ? (
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700">
+                            <span className="mr-2 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Conectado
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={handleDisconnect99Freelas}
+                            className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                          >
+                            Desconectar
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={handleConnect99Freelas} disabled={connecting99}>
+                          {connecting99 ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+                          {connecting99 ? "Aguardando login..." : "Conectar Conta"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

@@ -41,7 +41,8 @@ function PropostasList() {
           stack: item.stack || item.STACK || [],
           budget: item.orcamento || item.ORCAMENTO,
           status: item.status || item.STATUS,
-          proposta_ia: item.proposta_ia
+          proposta_ia: item.proposta_ia,
+          valor_proposta: item.valor_proposta
         }));
         setItems(mappedData);
       }
@@ -88,7 +89,7 @@ function PropostasList() {
               </p>
               <div className="flex items-center justify-between border-t border-border/50 pt-3 text-xs">
                 <span className="text-muted-foreground">Valor sugerido</span>
-                <span className="font-semibold">{currency(op.budget)}</span>
+                <span className="font-semibold">{op.valor_proposta ? currency(op.valor_proposta) : currency(op.budget)}</span>
               </div>
               <Button asChild size="sm" variant="outline" className="w-full border-border/60">
                 <Link to="/propostas/$id" params={{ id: op.id }}>Abrir proposta</Link>

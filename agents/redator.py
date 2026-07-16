@@ -87,22 +87,40 @@ Orçamento: R$ {vaga.get('orcamento')}
 1. A proposta deve ser formatada em texto claro, com parágrafos curtos.
 2. Seja persuasivo, mas honesto. Não invente habilidades que não estão no perfil do profissional.
 3. Escreva em Português do Brasil de forma natural (evite clichês de IA).
-4. Escreva APENAS o corpo da proposta (e o Assunto/Título, se achar necessário).
-5. Assine no final com o nome do profissional.
-6. Não utilize emojis e/ou caracteres especiais (a menos que solicitado no estilo da proposta)
+4. Assine no final com o nome do profissional.
+5. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
+6. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
+{{
+  "texto_proposta": "Olá! ...",
+  "valor": 1500,
+  "prazo": "7 dias"
+}}
 """
         import time
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                resposta = client.models.generate_content(model='gemini-3.5-flash', contents=sys_prompt)
+                # Utilizamos o response_mime_type para forçar JSON no Gemini
+                resposta = client.models.generate_content(
+                    model='gemini-3.5-flash', 
+                    contents=sys_prompt,
+                    config={'response_mime_type': 'application/json'}
+                )
                 
-                texto_proposta = resposta.text.strip()
+                import json
+                dados = json.loads(resposta.text.strip())
+                texto_proposta = dados.get("texto_proposta", "")
+                valor_proposta = dados.get("valor", 0)
+                prazo_proposta = dados.get("prazo", "")
                 
-                # Salva a proposta no banco de dados na coluna proposta_ia
-                supabase.table("oportunidades").update({"proposta_ia": texto_proposta}).eq("id", req.vaga_id).execute()
+                # Salva a proposta e as estimativas no banco de dados
+                supabase.table("oportunidades").update({
+                    "proposta_ia": texto_proposta,
+                    "valor_proposta": valor_proposta,
+                    "prazo_proposta": prazo_proposta
+                }).eq("id", req.vaga_id).execute()
                 
-                return {"proposta": texto_proposta, "modelo_utilizado": modelo_ativo}
+                return {"proposta": texto_proposta, "valor": valor_proposta, "prazo": prazo_proposta, "modelo_utilizado": modelo_ativo}
 
             except Exception as api_err:
                 if attempt < max_retries - 1:
@@ -112,12 +130,25 @@ Orçamento: R$ {vaga.get('orcamento')}
                 else:
                     print(f"[REDATOR FALLBACK] Gemini 3.5 falhou {max_retries} vezes. Acionando Gemini 3.1 Flash-Lite...")
                     try:
-                        resposta = client.models.generate_content(model='gemini-3.1-flash-lite', contents=sys_prompt)
-                        texto_proposta = resposta.text.strip()
+                        resposta = client.models.generate_content(
+                            model='gemini-3.1-flash-lite', 
+                            contents=sys_prompt,
+                            config={'response_mime_type': 'application/json'}
+                        )
+                        
+                        import json
+                        dados = json.loads(resposta.text.strip())
+                        texto_proposta = dados.get("texto_proposta", "")
+                        valor_proposta = dados.get("valor", 0)
+                        prazo_proposta = dados.get("prazo", "")
 
-                        supabase.table("oportunidades").update({"proposta_ia": texto_proposta}).eq("id", req.vaga_id).execute()
+                        supabase.table("oportunidades").update({
+                            "proposta_ia": texto_proposta,
+                            "valor_proposta": valor_proposta,
+                            "prazo_proposta": prazo_proposta
+                        }).eq("id", req.vaga_id).execute()
 
-                        return {"proposta": texto_proposta, "modelo_utilizado": modelo_ativo}
+                        return {"proposta": texto_proposta, "valor": valor_proposta, "prazo": prazo_proposta, "modelo_utilizado": modelo_ativo}
                     
                     except Exception as fallback_err:
                         raise Exception(f"Ambos os modelos falharam. Erro final: {fallback_err}")

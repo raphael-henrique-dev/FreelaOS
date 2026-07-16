@@ -11,6 +11,8 @@ from scout import router as scout_router
 from analista import router as analista_router
 from extractor import router as extractor_router
 from redator import router as redator_router
+from auth_platforms import router as auth_router
+from sender import router as sender_router
 
 app = FastAPI(title="FreelaOS Agents API")
 
@@ -28,6 +30,8 @@ app.include_router(scout_router)
 app.include_router(analista_router)
 app.include_router(extractor_router)
 app.include_router(redator_router)
+app.include_router(auth_router)
+app.include_router(sender_router)
 
 # Ponto de entrada central. Para rodar:
 # uvicorn main:app --reload
