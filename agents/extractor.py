@@ -137,7 +137,8 @@ def executar_extracao(user_id: str):
                 try:
                     scout_res = analisar_vaga(scout_req)
                     vaga_id = scout_res.get("vaga_id")
-                    
+                    # print(f'saida do scout {scout_res}')
+                
                     if vaga_id:
                         supabase.table("oportunidades").update({"url": url_vaga}).eq("id", vaga_id).execute()
                         
@@ -148,7 +149,7 @@ def executar_extracao(user_id: str):
                         score = analista_res.get("score", 0)
                         
                         # 5. Dispara o Redator IA automaticamente se o score bater a meta E se estiver ativado
-                        if automacao_ativada or score >= limite_automacao:
+                        if automacao_ativada and score >= limite_automacao:
                             print(f"[EXTRACTOR] Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
                             # Pausa de 15s antes de chamar outra IA pra não levar block do Gemini
                             time.sleep(15)
