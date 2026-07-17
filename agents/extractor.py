@@ -10,6 +10,7 @@ from scout import analisar_vaga, VagaBruta
 from analista import avaliar_oportunidade, AvaliacaoRequest
 from redator import gerar_proposta, RedatorRequest
 from sender import submit_proposta, SubmitRequest
+import threading
 
 router = APIRouter()
 
@@ -168,7 +169,8 @@ def executar_extracao(user_id: str):
                                             valor=result_redator.get("valor") or valor_minimo,
                                             prazo=result_redator.get("prazo", "3 dias")
                                         )
-                                        submit_proposta(sender_req)
+                                        # Executa o Sender numa Thread isolada para não conflitar com o Playwright do Extrator
+                                        threading.Thread(target=submit_proposta, args=(sender_req,)).start()
                                     except Exception as sender_err:
                                         print(f"[EXTRACTOR] ❌ Erro fatal no Sender: {sender_err}")
                                     
