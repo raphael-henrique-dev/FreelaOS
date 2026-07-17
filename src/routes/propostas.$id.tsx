@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Save, Send, Sparkles, RefreshCw, ExternalLink, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/page-header";
 import { currency, statusVariant } from "@/lib/mock-data";
@@ -49,12 +50,13 @@ export const Route = createFileRoute("/propostas/$id")({
 function PropostaEditor() {
   const { op } = Route.useLoaderData();
   const [text, setText] = useState("");
-  const [valor, setValor] = useState(0);
+  const [valor, setValor] = useState<number | string>(0);
   const [prazo, setPrazo] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [modelo, setModelo] = useState("");
   const [isSentLocal, setIsSentLocal] = useState(false);
+  const router = useRouter();
   
   const isSent = (op.status === "Proposta enviada") || isSentLocal;
 
@@ -118,6 +120,39 @@ function PropostaEditor() {
     }
   }
 
+  async function saveDraft() {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return;
+      
+      const { error } = await supabase
+        .from("oportunidades")
+        .update({
+          proposta_ia: text,
+          valor_proposta: Number(valor),
+          prazo_proposta: prazo,
+          status: "Rascunho"
+        })
+        .eq("id", op.id)
+        .eq("perfil_id", session.user.id);
+
+      if (error) {
+        console.error("Supabase Error Update Oportunidade:", error);
+        throw error;
+      }
+      
+      toast.success("Proposta salva como rascunho (Backlog)");
+      // Refaz o fetch dos dados da rota sem piscar a tela
+      router.invalidate();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Erro ao salvar rascunho");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (op.proposta_ia) {
       setText(op.proposta_ia);
@@ -161,13 +196,17 @@ function PropostaEditor() {
             
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label className="text-xs text-muted-foreground">Valor Estimado pela IA (R$)</Label>
-                <Input 
-                  type="number" 
-                  value={valor} 
-                  onChange={(e) => setValor(Number(e.target.value))} 
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="text-xs text-muted-foreground">Valor Estimado (Proposta)</Label>
+                  <span className="text-sm font-semibold text-primary">{currency(Number(valor) || 0)}</span>
+                </div>
+                <Slider 
+                  value={[Number(valor) || 0]} 
+                  max={10000} 
+                  step={50} 
+                  onValueChange={(val) => setValor(val[0])} 
                   disabled={loading || isSent}
-                  className="mt-1 border-border/50 bg-background/40"
+                  className="mt-1"
                 />
               </div>
               <div>
@@ -198,7 +237,7 @@ function PropostaEditor() {
                   <Button variant="outline" onClick={() => fetchRedatorAPI(true)} disabled={loading || sending}>
                     <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Gerar nova proposta
                   </Button>
-                  <Button variant="outline" onClick={() => toast.success("Proposta salva como rascunho")} disabled={loading || sending}>
+                  <Button variant="outline" onClick={saveDraft} disabled={loading || sending}>
                     <Save className="mr-2 h-4 w-4" /> Salvar
                   </Button>
                   <Button

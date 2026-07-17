@@ -15,6 +15,7 @@ import { Route as ProjetosRouteImport } from './routes/projetos'
 import { Route as OportunidadesRouteImport } from './routes/oportunidades'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
@@ -53,6 +54,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FinanceiroRoute = FinanceiroRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/projetos': typeof ProjetosRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/financeiro': typeof FinanceiroRoute
+  '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/financeiro'
+    | '/inbox'
     | '/login'
     | '/onboarding'
     | '/oportunidades'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/financeiro'
+    | '/inbox'
     | '/login'
     | '/onboarding'
     | '/projetos'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/financeiro'
+    | '/inbox'
     | '/login'
     | '/onboarding'
     | '/oportunidades'
@@ -209,6 +221,7 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  InboxRoute: typeof InboxRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   OportunidadesRoute: typeof OportunidadesRouteWithChildren
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/financeiro': {
@@ -361,6 +381,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FinanceiroRoute: FinanceiroRoute,
+  InboxRoute: InboxRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   OportunidadesRoute: OportunidadesRouteWithChildren,

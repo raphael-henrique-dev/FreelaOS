@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,20 +14,96 @@ import {
 } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PageContainer, PageHeader } from "@/components/page-header";
-import { clients, currency, statusVariant } from "@/lib/mock-data";
+import { currency, statusVariant } from "@/lib/mock-data";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({ meta: [{ title: "Clientes · FreelaOS" }] }),
   component: ClientesPage,
 });
 
+interface ClientData {
+  id: string;
+  name: string;
+  avatar: string;
+  projects: number;
+  totalValue: number;
+  lastContact: string;
+  status: string;
+  notes: string;
+  history: { date: string; text: string }[];
+  rawProjects: any[];
+}
+
 function ClientesPage() {
   const [open, setOpen] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientData[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const current = clients.find((c) => c.id === open) ?? null;
+
+  useEffect(() => {
+    async function fetchClients() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        setLoading(false);
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from("clientes")
+        .select(`
+          *,
+          oportunidades (
+            id,
+            titulo,
+            status,
+            valor_proposta
+          )
+        `)
+        .eq("perfil_id", session.user.id)
+        .order("atualizado_em", { ascending: false });
+        
+      if (data) {
+        // Status que indicam que uma proposta já foi enviada ou avançou no funil
+        const validStatuses = ["Proposta enviada", "Em negociação", "Proposta aceita", "Projeto fechado", "Finalizado"];
+        
+        const mapped = data.map((c: any) => {
+          const ops = c.oportunidades || [];
+          const validOps = ops.filter((o: any) => validStatuses.includes(o.status));
+          
+          // O usuário pediu: "a partir do status Proposta enviada, ou seja, tem proposta enviada? se sim, vai pra tela de clientes"
+          if (validOps.length === 0) return null;
+          
+          const totalValue = validOps.reduce((sum: number, o: any) => sum + (o.valor_proposta || 0), 0);
+          
+          return {
+            id: c.id,
+            name: c.nome,
+            avatar: c.nome.substring(0, 2).toUpperCase(),
+            projects: validOps.length,
+            totalValue: totalValue > 0 ? totalValue : Number(c.valor_total || 0),
+            lastContact: c.ultimo_contato ? new Date(c.ultimo_contato).toLocaleDateString("pt-BR") : "Nenhum contato",
+            status: c.status || "Ativo",
+            notes: "Anotações e acompanhamentos futuros serão exibidos aqui.",
+            history: [
+              { date: new Date(c.criado_em).toLocaleDateString("pt-BR"), text: "Cliente prospectado e proposta enviada." }
+            ],
+            rawProjects: validOps
+          };
+        }).filter(Boolean) as ClientData[];
+        
+        setClients(mapped);
+      }
+      setLoading(false);
+    }
+    
+    fetchClients();
+  }, []);
 
   return (
     <PageContainer>
-      <PageHeader title="Clientes" description="Todo o relacionamento comercial em um só lugar." />
+      <PageHeader title="Clientes" description="Todo o relacionamento comercial em um só lugar, gerado a partir das propostas enviadas." />
 
       <Card className="border-border/60 bg-card/60">
         <CardContent className="overflow-x-auto p-0">
@@ -41,8 +118,23 @@ function ClientesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clients.map((c) => (
-                <TableRow key={c.id} className="cursor-pointer border-border/50" onClick={() => setOpen(c.id)}>
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
+                    Carregando carteira de clientes...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && clients.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                    Nenhum cliente ativo ainda. Envie uma proposta para um projeto e ele aparecerá aqui.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && clients.map((c) => (
+                <TableRow key={c.id} className="cursor-pointer border-border/50 transition-colors hover:bg-muted/50" onClick={() => setOpen(c.id)}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-primary text-xs font-semibold text-primary-foreground">
@@ -52,10 +144,10 @@ function ClientesPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{c.projects}</TableCell>
-                  <TableCell>{currency(c.totalValue)}</TableCell>
-                  <TableCell className="text-muted-foreground">{c.lastContact}</TableCell>
+                  <TableCell className="font-medium text-primary/90">{currency(c.totalValue)}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">{c.lastContact}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(c.status)}>{c.status}</Badge>
+                    <Badge variant={statusVariant(c.status) as any}>{c.status}</Badge>
                   </TableCell>
                 </TableRow>
               ))}
@@ -79,11 +171,30 @@ function ClientesPage() {
               <div className="mt-6 space-y-5 px-4">
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <Metric label="Projetos" value={current.projects.toString()} />
-                  <Metric label="Valor" value={currency(current.totalValue)} />
+                  <Metric label="Faturamento" value={currency(current.totalValue)} />
                   <Metric label="Status" value={current.status} />
                 </div>
                 <section>
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Histórico</p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Projetos deste cliente</p>
+                  <div className="mt-2 space-y-2">
+                    {current.rawProjects?.map((proj) => (
+                      <Link 
+                        key={proj.id} 
+                        to="/oportunidades/$id"
+                        params={{ id: proj.id }}
+                        className="flex items-center justify-between rounded-lg border border-border/50 bg-background/40 p-3 text-sm transition-colors hover:bg-muted/50"
+                      >
+                        <div className="min-w-0 pr-4">
+                          <p className="font-medium text-foreground truncate">{proj.titulo}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{currency(proj.valor_proposta || 0)}</p>
+                        </div>
+                        <Badge variant={statusVariant(proj.status) as any} className="shrink-0">{proj.status}</Badge>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+                <section>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">Histórico Automático</p>
                   <div className="mt-2 space-y-2">
                     {current.history.map((h, i) => (
                       <div key={i} className="rounded-lg border border-border/50 bg-background/40 p-3 text-sm">
@@ -108,9 +219,9 @@ function ClientesPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
+    <div className="rounded-lg border border-border/50 bg-background/40 p-3 shadow-sm">
       <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-foreground/90">{value}</p>
     </div>
   );
 }

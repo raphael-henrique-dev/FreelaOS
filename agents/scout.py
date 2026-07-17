@@ -70,10 +70,26 @@ def analisar_vaga(vaga: VagaBruta):
         clean_json = resposta.text.replace("```json", "").replace("```", "").strip()
         dados_ia = json.loads(clean_json)
         
+        cliente_nome = dados_ia.get("CLIENTE", "Confidencial")
+        
+        # 1. Verifica se o cliente já existe ou cria um novo
+        c_res = supabase.table("clientes").select("id").eq("perfil_id", vaga.perfil_id).ilike("nome", cliente_nome).execute()
+        
+        if c_res.data:
+            cliente_id = c_res.data[0]["id"]
+        else:
+            novo_c = supabase.table("clientes").insert({
+                "perfil_id": vaga.perfil_id,
+                "nome": cliente_nome,
+                "status": "Ativo"
+            }).execute()
+            cliente_id = novo_c.data[0]["id"] if novo_c.data else None
+
         # Prepara para salvar no Supabase
         registro = {
             "titulo": dados_ia.get("TITULO", "Sem Título"),
-            "cliente": dados_ia.get("CLIENTE", "Confidencial"),
+            "cliente": cliente_nome,
+            "cliente_id": cliente_id,
             "orcamento": dados_ia.get("ORCAMENTO", 0),
             "prazo": dados_ia.get("PRAZO", "Não informado"),
             "stack": dados_ia.get("STACK", []),

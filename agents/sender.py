@@ -42,7 +42,7 @@ def submit_proposta(req: SubmitRequest):
         with sync_playwright() as p:
             browser = p.chromium.launch_persistent_context(
                 user_data_dir=session_dir,
-                headless=True, # 100% invisível 
+                headless=False, # 100% invisível 
                 viewport={"width": 1280, "height": 720},
                 args=["--disable-blink-features=AutomationControlled"]
             )
@@ -51,6 +51,12 @@ def submit_proposta(req: SubmitRequest):
             try:
                 page.goto(url_vaga, timeout=60000)
                 
+                # Verifica se a proposta já foi enviada (botão Melhorar Proposta)
+                btn_melhorar = page.locator("a:has-text('Melhorar proposta'), a:has-text('Melhorar Proposta')").first
+                if btn_melhorar.count() > 0:
+                    supabase.table("oportunidades").update({"status": "Proposta enviada"}).eq("id", req.vaga_id).execute()
+                    return {"status": "success", "message": "Aviso: Uma proposta já havia sido enviada anteriormente. O status foi atualizado."}
+
                 # O botão "Enviar proposta" no 99Freelas geralmente é um link para a página do form
                 link_enviar = page.locator("a.btn.blue:has-text('Enviar proposta'), a:has-text('Enviar proposta')").first
                 if link_enviar.count() > 0:

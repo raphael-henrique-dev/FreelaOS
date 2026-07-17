@@ -12,6 +12,7 @@ import {
   Settings,
   Sparkles,
   LogOut,
+  Inbox
 } from "lucide-react";
 
 import {
@@ -31,6 +32,7 @@ const nav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, exact: true },
   { title: "Oportunidades", url: "/oportunidades", icon: Compass },
   { title: "Propostas", url: "/propostas", icon: FileText },
+  { title: "Inbox", url: "/inbox", icon: Inbox },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Projetos", url: "/projetos", icon: KanbanSquare },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },

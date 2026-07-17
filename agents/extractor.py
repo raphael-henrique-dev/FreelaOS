@@ -9,6 +9,7 @@ from playwright.sync_api import sync_playwright
 from scout import analisar_vaga, VagaBruta
 from analista import avaliar_oportunidade, AvaliacaoRequest
 from redator import gerar_proposta, RedatorRequest
+from sender import submit_proposta, SubmitRequest
 
 router = APIRouter()
 
@@ -27,9 +28,10 @@ class ExtractorRequest(BaseModel):
 def executar_extracao(user_id: str):
     print(f"[EXTRACTOR] Buscando configurações e perfil do usuário {user_id}...")
     
-    # 1. Pega habilidades e configs
-    perfil_res = supabase.table("perfis").select("habilidades").eq("id", user_id).execute()
+    # 1. Pega habilidades, configs e valor minimo
+    perfil_res = supabase.table("perfis").select("habilidades, valor_projeto_minimo").eq("id", user_id).execute()
     habilidades = perfil_res.data[0].get("habilidades", []) if perfil_res.data else []
+    valor_minimo = perfil_res.data[0].get("valor_projeto_minimo", 0) if perfil_res.data else 0
     
     config_res = supabase.table("configuracoes_usuario").select("*").eq("perfil_id", user_id).execute()
     
@@ -44,14 +46,17 @@ def executar_extracao(user_id: str):
             automacao_ativada = modelos_proposta.get("automacao_ativada", True)
     
     config_99 = integracoes.get("99freelas", {})
-    # Caso a flag não exista no JSON velho, assume True por padrão
     ignorar_exclusivos = config_99.get("ignoreExclusive", True) if isinstance(config_99, dict) else True
+    
+    revisao_humana = True
+    if config_res.data and config_res.data[0].get("revisao_humana_obrigatoria") is not None:
+        revisao_humana = config_res.data[0].get("revisao_humana_obrigatoria")
     
     # Se não tiver habilidade, faz a busca padrão
     buscas = habilidades if len(habilidades) > 0 else ["desenvolvimento-web"]
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         
         for termo in buscas:
@@ -142,13 +147,31 @@ def executar_extracao(user_id: str):
                         score = analista_res.get("score", 0)
                         
                         # 5. Dispara o Redator IA automaticamente se o score bater a meta E se estiver ativado
-                        if automacao_ativada and score >= limite_automacao:
+                        if automacao_ativada or score >= limite_automacao:
                             print(f"[EXTRACTOR] Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
                             # Pausa de 15s antes de chamar outra IA pra não levar block do Gemini
                             time.sleep(15)
                             try:
-                                gerar_proposta(RedatorRequest(vaga_id=vaga_id, user_id=user_id))
+                                result_redator = gerar_proposta(RedatorRequest(vaga_id=vaga_id, user_id=user_id))
                                 print(f"[EXTRACTOR] Proposta gerada com sucesso para a vaga {vaga_id}!")
+                                
+                                # NOVO: INTEGRAÇÃO COM SENDER (Autopilot)
+                                if revisao_humana:
+                                    print(f"[EXTRACTOR] 🛡️ Revisão humana ativada. Vaga mantida em Rascunho.")
+                                else:
+                                    print(f"[EXTRACTOR] 🚀 Revisão humana desligada. Enviando proposta automaticamente!")
+                                    try:
+                                        sender_req = SubmitRequest(
+                                            vaga_id=vaga_id,
+                                            user_id=user_id,
+                                            texto=result_redator.get("proposta", ""),
+                                            valor=result_redator.get("valor") or valor_minimo,
+                                            prazo=result_redator.get("prazo", "3 dias")
+                                        )
+                                        submit_proposta(sender_req)
+                                    except Exception as sender_err:
+                                        print(f"[EXTRACTOR] ❌ Erro fatal no Sender: {sender_err}")
+                                    
                             except Exception as redator_err:
                                 print(f"[EXTRACTOR] Erro ao gerar proposta: {redator_err}")
                         else:
@@ -156,7 +179,6 @@ def executar_extracao(user_id: str):
                                 print(f"[EXTRACTOR] Automação do Redator IA está desligada nas configurações.")
                             else:
                                 print(f"[EXTRACTOR] Score {score} abaixo da meta ({limite_automacao}). Ignorando Redator IA.")
-                        
                         print(f"[EXTRACTOR] Ciclo finalizado para a vaga: {titulo}\n")
                         # Pausa de 15 segundos entre vagas para garantir que o limite gratuito do Gemini (15 RPM) não seja estourado
                         time.sleep(15)
@@ -173,3 +195,42 @@ def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks)
     # O FASTAPI retorna imediatamente para o frontend e joga a função pra rodar em background!
     background_tasks.add_task(executar_extracao, req.user_id)
     return {"mensagem": "Extrator disparado! Ele varrerá a web em segundo plano."}
+
+
+active_autopilots = set()
+
+def autopilot_loop(user_id: str):
+    while user_id in active_autopilots:
+        try:
+            # Verifica se o usuário ainda está com a configuração ativa
+            conf_res = supabase.table("configuracoes_usuario").select("piloto_automatico_ativado").eq("perfil_id", user_id).single().execute()
+            if conf_res.data and conf_res.data.get("piloto_automatico_ativado"):
+                print(f"\n[AUTOPILOT LOOP] Iniciando ciclo programado para {user_id}")
+                executar_extracao(user_id)
+            else:
+                print(f"[AUTOPILOT LOOP] Desativado no banco para {user_id}. Parando o loop.")
+                active_autopilots.remove(user_id)
+                break
+        except Exception as e:
+            print(f"[AUTOPILOT LOOP] Erro no loop principal: {e}")
+        
+        # Espera 3 horas (10800 segundos) para o próximo ciclo
+        print("[AUTOPILOT LOOP] Aguardando 3 horas para o próximo ciclo...")
+        time.sleep(10800)
+
+
+@router.post("/api/autopilot/check")
+def check_autopilot(req: ExtractorRequest, background_tasks: BackgroundTasks):
+    conf = supabase.table("configuracoes_usuario").select("piloto_automatico_ativado").eq("perfil_id", req.user_id).single().execute()
+    
+    if conf.data and conf.data.get("piloto_automatico_ativado"):
+        if req.user_id not in active_autopilots:
+            active_autopilots.add(req.user_id)
+            background_tasks.add_task(autopilot_loop, req.user_id)
+            return {"status": "started", "message": "Autopilot ativado no backend."}
+    else:
+        if req.user_id in active_autopilots:
+            active_autopilots.remove(req.user_id)
+            return {"status": "stopped", "message": "Autopilot desativado."}
+
+    return {"status": "unchanged"}

@@ -75,7 +75,7 @@ function Dashboard() {
         .limit(100);
 
       if (data) {
-        setLatestOps(data.slice(0, 5));
+        setLatestOps(data.filter((op: any) => op.status !== "Ignorada").slice(0, 5));
 
         // 1. Conectar Gráfico de Oportunidades
         const last7Days = Array.from({ length: 7 }, (_, i) => {

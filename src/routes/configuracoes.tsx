@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Github, Linkedin, Sparkles, Zap, Save, Loader2 } from "lucide-react";
+import { Github, Linkedin, Sparkles, Zap, Save, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -53,12 +53,19 @@ function ConfigPage() {
   const [novaHabilidade, setNovaHabilidade] = useState("");
   const [senioridade, setSenioridade] = useState("");
 
+  // Pricing & Languages
+  const [idiomas, setIdiomas] = useState<{idioma: string, nivel: string}[]>([]);
+  const [valorHora, setValorHora] = useState<number>(0);
+  const [valorProjeto, setValorProjeto] = useState<number>(0);
+  const [moedaBase, setMoedaBase] = useState("BRL");
+
   // Configurações
   const [integracoes, setIntegracoes] = useState(defaultIntegrations);
   const [modeloAtivo, setModeloAtivo] = useState("padrao");
   const [promptPersonalizado, setPromptPersonalizado] = useState("");
   const [limiteAutomacao, setLimiteAutomacao] = useState(70);
   const [automacaoAtivada, setAutomacaoAtivada] = useState(true);
+  const [revisaoHumana, setRevisaoHumana] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -82,6 +89,10 @@ function ConfigPage() {
           setBio(perfil.bio || "");
           setHabilidades(perfil.habilidades || []);
           setSenioridade(perfil.senioridade || "Pleno");
+          setIdiomas(perfil.idiomas || []);
+          setValorHora(perfil.valor_hora_minimo || 0);
+          setValorProjeto(perfil.valor_projeto_minimo || 0);
+          setMoedaBase(perfil.moeda_base || "BRL");
 
           const parts = (perfil.nome || "Usuário").split(" ").filter(Boolean);
           if (parts.length > 1) {
@@ -123,6 +134,9 @@ function ConfigPage() {
                 setAutomacaoAtivada(config.modelos_proposta.automacao_ativada);
               }
             }
+          }
+          if (config.revisao_humana_obrigatoria !== undefined) {
+            setRevisaoHumana(config.revisao_humana_obrigatoria);
           }
         } else {
           // Se não existir, insere default
@@ -167,7 +181,11 @@ function ConfigPage() {
           fuso_horario: fuso,
           bio,
           habilidades,
-          senioridade
+          senioridade,
+          idiomas,
+          valor_hora_minimo: valorHora,
+          valor_projeto_minimo: valorProjeto,
+          moeda_base: moedaBase
         })
         .eq("id", userId);
 
@@ -180,7 +198,8 @@ function ConfigPage() {
         .from("configuracoes_usuario")
         .update({
           integracoes: integracoesJson,
-          modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada }
+          modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada },
+          revisao_humana_obrigatoria: revisaoHumana
         })
         .eq("perfil_id", userId);
 
@@ -389,6 +408,78 @@ function ConfigPage() {
           </CardContent>
         </Card>
 
+        {/* IDIOMAS & PRECIFICAÇÃO */}
+        <Card className="border-border/60 bg-card/60">
+          <CardHeader>
+            <CardTitle className="text-base">Precificação & Idiomas</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">Valor Hora Mínimo</Label>
+                <Input type="number" value={valorHora} onChange={e => setValorHora(Number(e.target.value))} className="mt-1 border-border/50 bg-background/40" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Valor Projeto Mínimo</Label>
+                <Input type="number" value={valorProjeto} onChange={e => setValorProjeto(Number(e.target.value))} className="mt-1 border-border/50 bg-background/40" />
+              </div>
+              <div className="sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Moeda Base</Label>
+                <select 
+                  value={moedaBase} 
+                  onChange={e => setMoedaBase(e.target.value)}
+                  className="mt-1 flex h-10 w-full rounded-md border border-input bg-background/40 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="BRL">BRL (Real)</option>
+                  <option value="USD">USD (Dólar)</option>
+                  <option value="EUR">EUR (Euro)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Idiomas</Label>
+              <div className="mt-2 space-y-2">
+                {idiomas.map((idioma, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <Input 
+                      value={idioma.idioma} 
+                      onChange={e => {
+                        const newIdiomas = [...idiomas];
+                        newIdiomas[idx].idioma = e.target.value;
+                        setIdiomas(newIdiomas);
+                      }} 
+                      placeholder="Ex: Inglês" 
+                      className="border-border/50 bg-background/40" 
+                    />
+                    <select 
+                      value={idioma.nivel} 
+                      onChange={e => {
+                        const newIdiomas = [...idiomas];
+                        newIdiomas[idx].nivel = e.target.value;
+                        setIdiomas(newIdiomas);
+                      }}
+                      className="flex h-10 rounded-md border border-input bg-background/40 px-3 py-2 text-sm ring-offset-background"
+                    >
+                      <option value="Básico">Básico</option>
+                      <option value="Intermediário">Intermediário</option>
+                      <option value="Avançado">Avançado</option>
+                      <option value="Fluente">Fluente</option>
+                      <option value="Nativo">Nativo</option>
+                    </select>
+                    <Button variant="ghost" size="icon" onClick={() => setIdiomas(idiomas.filter((_, i) => i !== idx))}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setIdiomas([...idiomas, { idioma: "", nivel: "Básico" }])} className="mt-2 text-xs">
+                + Adicionar Idioma
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* MODELOS DE PROPOSTA */}
         <Card className="border-border/60 bg-card/60 lg:col-span-2">
           <CardHeader>
@@ -454,6 +545,21 @@ function ConfigPage() {
                 disabled={!automacaoAtivada}
                 className={`w-full accent-primary ${!automacaoAtivada ? 'opacity-50 cursor-not-allowed' : ''}`}
               />
+            </div>
+
+            <div className="pt-4 border-t border-border/50">
+              <Label className="text-xs text-muted-foreground flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span>Revisão Humana Obrigatória (Segurança)</span>
+                  <Switch 
+                    checked={revisaoHumana}
+                    onCheckedChange={setRevisaoHumana}
+                  />
+                </div>
+              </Label>
+              <p className="text-[11px] text-muted-foreground mb-1 mt-2 leading-relaxed">
+                Se ativado, o robô final (Sender) não enviará propostas automaticamente, deixando-as como "Rascunho" para sua aprovação no Backlog. Se desativado, o Piloto Automático enviará as propostas direto para o cliente.
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -7,12 +7,13 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path="../.env")
 
 # Importa as rotas dos agentes
-from scout import router as scout_router
-from analista import router as analista_router
-from extractor import router as extractor_router
-from redator import router as redator_router
-from auth_platforms import router as auth_router
-from sender import router as sender_router
+import scout
+import analista
+import redator
+import sender
+import auth_platforms
+import extractor
+import inbox_monitor
 
 app = FastAPI(title="FreelaOS Agents API")
 
@@ -26,12 +27,13 @@ app.add_middleware(
 )
 
 # Registra os agentes no orquestrador
-app.include_router(scout_router)
-app.include_router(analista_router)
-app.include_router(extractor_router)
-app.include_router(redator_router)
-app.include_router(auth_router)
-app.include_router(sender_router)
+app.include_router(scout.router)
+app.include_router(analista.router)
+app.include_router(redator.router)
+app.include_router(sender.router)
+app.include_router(auth_platforms.router)
+app.include_router(extractor.router)
+app.include_router(inbox_monitor.router)
 
 # Ponto de entrada central. Para rodar:
 # uvicorn main:app --reload

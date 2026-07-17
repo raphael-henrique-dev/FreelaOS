@@ -23,14 +23,35 @@ export const Route = createFileRoute("/oportunidades/$id")({
     if (session?.user?.id) {
       const { data: allOps } = await supabase
         .from("oportunidades")
-        .select("id")
+        .select("id, status, plataforma, score, titulo, cliente, stack")
         .eq("perfil_id", session.user.id)
         .order("criado_em", { ascending: false });
         
       if (allOps) {
-        const idx = allOps.findIndex((o: any) => o.id === params.id);
-        if (idx > 0) prevId = allOps[idx - 1].id; // Mais recente (Anterior na tela)
-        if (idx !== -1 && idx < allOps.length - 1) nextId = allOps[idx + 1].id; // Mais antiga (Próxima)
+        const search = localStorage.getItem("freelaos_ops_search") || "";
+        const statuses = JSON.parse(localStorage.getItem("freelaos_ops_statuses") || "[]");
+        const platforms = JSON.parse(localStorage.getItem("freelaos_ops_platforms") || "[]");
+        const minScore = parseInt(localStorage.getItem("freelaos_ops_score") || "0", 10);
+
+        const filteredOps = allOps.filter((op: any) => {
+          if (op.status === "Ignorada") return false;
+          
+          if (search) {
+            const term = search.toLowerCase();
+            const titleMatch = op.titulo?.toLowerCase().includes(term);
+            const clientMatch = op.cliente?.toLowerCase().includes(term);
+            const stackMatch = op.stack?.some((s: string) => s.toLowerCase().includes(term));
+            if (!titleMatch && !clientMatch && !stackMatch) return false;
+          }
+          if (statuses.length > 0 && !statuses.includes(op.status)) return false;
+          if (platforms.length > 0 && !platforms.includes(op.plataforma)) return false;
+          if (minScore > 0 && (op.score || 0) < minScore) return false;
+          return true;
+        });
+
+        const idx = filteredOps.findIndex((o: any) => o.id === params.id);
+        if (idx > 0) prevId = filteredOps[idx - 1].id; // Mais recente (Anterior na tela)
+        if (idx !== -1 && idx < filteredOps.length - 1) nextId = filteredOps[idx + 1].id; // Mais antiga (Próxima)
       }
     }
     
@@ -96,7 +117,7 @@ function OpDetail() {
 
   async function handleDelete() {
     if (!confirm("Deseja realmente ignorar esta oportunidade?")) return;
-    const { data, error } = await supabase.from("oportunidades").delete().eq("id", op.id).select();
+    const { data, error } = await supabase.from("oportunidades").update({ status: "Ignorada" }).eq("id", op.id).select();
     
     if (error) {
       alert("Erro ao remover oportunidade: " + error.message);
@@ -104,7 +125,7 @@ function OpDetail() {
     }
     
     if (!data || data.length === 0) {
-      alert("Falha: O banco recusou a deleção. Verifique suas políticas (RLS) do Supabase para DELETE.");
+      alert("Falha: O banco recusou a atualização. Verifique suas políticas (RLS) do Supabase para UPDATE.");
       return;
     }
 
