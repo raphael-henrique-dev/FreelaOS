@@ -25,6 +25,7 @@ venv/
 env/
 agents/venv/
 agents/.venv/
+playwright_sessions/
 
 # Environment variables (SECURITY)
 .env
