@@ -107,6 +107,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
   const [limiteAutomacao, setLimiteAutomacao] = useState(config.modelos_proposta?.limite_automacao ?? 70);
   const [automacaoAtivada, setAutomacaoAtivada] = useState(config.modelos_proposta?.automacao_ativada ?? true);
   const [revisaoHumana, setRevisaoHumana] = useState(config.revisao_humana_obrigatoria ?? true);
+  const [intervalHours, setIntervalHours] = useState(config.interval_hours ?? 3);
 
   const [connecting99, setConnecting99] = useState(false);
   const [isConnected99, setIsConnected99] = useState(initialData.isConnected99);
@@ -123,7 +124,8 @@ function ConfigPage({ initialData }: { initialData: any }) {
       configPayload: {
         integracoes: integracoesJson,
         modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada },
-        revisao_humana_obrigatoria: revisaoHumana
+        revisao_humana_obrigatoria: revisaoHumana,
+        interval_hours: intervalHours
       }
     });
   };
@@ -444,6 +446,26 @@ function ConfigPage({ initialData }: { initialData: any }) {
               </Label>
               <p className="text-[11px] text-muted-foreground mb-1 mt-2 leading-relaxed">
                 Se ativado, o robô final (Sender) não enviará propostas automaticamente, deixando-as como "Rascunho" para sua aprovação no Backlog. Se desativado, o Piloto Automático enviará as propostas direto para o cliente.
+              </p>
+            </div>
+
+            <div className="pt-4 border-t border-border/50">
+              <Label className="text-xs text-muted-foreground mb-3 flex items-center gap-3">
+                <span>Frequência de Varredura (Piloto Automático)</span>
+              </Label>
+              <select 
+                value={intervalHours} 
+                onChange={e => setIntervalHours(Number(e.target.value))}
+                className="flex h-9 w-full rounded-md border border-input bg-background/40 px-3 py-1 text-sm ring-offset-background"
+              >
+                <option value={1}>A cada 1 hora</option>
+                <option value={3}>A cada 3 horas</option>
+                <option value={6}>A cada 6 horas</option>
+                <option value={12}>A cada 12 horas</option>
+                <option value={24}>Uma vez por dia (24h)</option>
+              </select>
+              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                Define de quanto em quanto tempo o Piloto Automático de Agents acorda para procurar novas vagas nas plataformas conectadas.
               </p>
             </div>
           </CardContent>

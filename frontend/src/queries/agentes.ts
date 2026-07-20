@@ -12,13 +12,14 @@ export function useAutopilotStatus() {
 
       const { data } = await supabase
         .from("configuracoes_usuario")
-        .select("piloto_automatico_ativado")
+        .select("piloto_automatico_ativado, interval_hours")
         .eq("perfil_id", user.id)
         .single();
         
       return {
         userId: user.id,
-        autopilot: data?.piloto_automatico_ativado || false
+        autopilot: data?.piloto_automatico_ativado || false,
+        intervalHours: data?.interval_hours || 3
       };
     },
   });

@@ -12,9 +12,11 @@ class SenderService:
     def submit_proposta(vaga_id: str, user_id: str, texto: str, valor: int, prazo: str) -> dict:
         session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "99freelas")
         
-        if not os.path.exists(session_dir):
-            raise ValueError("Sessão do 99Freelas não encontrada. Conecte sua conta primeiro.")
-            
+        # Verifica pelo serviço de autenticação para garantir que há tokens/cookies válidos
+        if not AuthService.status_99freelas(user_id):
+            logger.error(f"[SENDER] Sessão do 99Freelas não encontrada ou expirada para o usuário {user_id}.")
+            raise ValueError("Sessão do 99Freelas não encontrada ou expirada. Conecte sua conta primeiro na tela de Configurações.")
+        
         vaga = opp_repo.get_opportunity(vaga_id)
         if not vaga:
             raise ValueError("Vaga não encontrada no banco.")
@@ -51,7 +53,7 @@ class SenderService:
                 
 
                 if "register" in page.url:
-                    logger.warning(f"[SENDER] Sessão expirada para o usuário {user_id}.")
+                    logger.error(f"[SENDER] Sessão expirada para o usuário {user_id}.")
                     browser.close()
                     raise ValueError("Sessão expirada. Por favor, reconecte sua conta 99Freelas.")
                  

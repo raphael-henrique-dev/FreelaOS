@@ -83,6 +83,12 @@ def executar_extracao(user_id: str):
                 if link_tag.count() == 0:
                     continue
                     
+                # Verifica se o usuário desligou o piloto automático no meio da extração
+                check_conf = repo_profile.get_user_settings(user_id)
+                if check_conf and not check_conf.get("piloto_automatico_ativado"):
+                    print("[EXTRACTOR] Piloto Automático foi DESLIGADO pelo usuário. Abortando extração IMEDIATAMENTE.")
+                    return
+
                 titulo = link_tag.inner_text()
                 href = link_tag.get_attribute("href")
                 url_vaga = f"https://www.99freelas.com.br{href}"
@@ -170,6 +176,13 @@ def executar_extracao(user_id: str):
                             else:
                                 print(f"[EXTRACTOR] Score {score} abaixo da meta ({limite_automacao}). Ignorando Redator IA.")
                         print(f"[EXTRACTOR] Ciclo finalizado para a vaga: {titulo}\n")
+                        
+                        # Verifica novamente antes de dormir se o motor foi desligado
+                        check_conf_after = repo_profile.get_user_settings(user_id)
+                        if check_conf_after and not check_conf_after.get("piloto_automatico_ativado"):
+                            print("[EXTRACTOR] Piloto Automático DESLIGADO. Abortando pausas e saindo.")
+                            return
+                            
                         # Pausa de 15 segundos entre vagas para garantir que o limite gratuito do Gemini (15 RPM) não seja estourado
                         time.sleep(15)
                         

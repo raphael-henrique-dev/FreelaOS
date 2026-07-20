@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { Activity, Power, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -41,11 +42,53 @@ function AgentesPageWrapper() {
     );
   }
 
-  return <AgentesPage userId={data.userId} initialAutopilot={data.autopilot} />;
+  return <AgentesPage userId={data.userId} initialAutopilot={data.autopilot} intervalHours={data.intervalHours} />;
 }
 
-function AgentesPage({ userId, initialAutopilot }: { userId: string, initialAutopilot: boolean }) {
+function useAutopilotCountdown(isActive: boolean, intervalHours: number) {
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isActive) {
+      localStorage.removeItem("autopilot_next_run");
+      setTimeLeft(null);
+      return;
+    }
+
+    const intervalMs = intervalHours * 3600 * 1000;
+    
+    // Lógica para manter o timer sincronizado com recarregamentos
+    let nextRunStr = localStorage.getItem("autopilot_next_run");
+    let nextRun = nextRunStr ? parseInt(nextRunStr, 10) : 0;
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      // Se não houver next_run ou se já passou, recalcula o próximo ciclo
+      if (!nextRunStr || nextRun <= now) {
+        nextRun = now + intervalMs;
+        localStorage.setItem("autopilot_next_run", nextRun.toString());
+        nextRunStr = nextRun.toString();
+      }
+      setTimeLeft(Math.max(0, Math.floor((nextRun - now) / 1000)));
+    };
+
+    updateTimer();
+    const timerId = setInterval(updateTimer, 1000);
+    return () => clearInterval(timerId);
+  }, [isActive, intervalHours]);
+
+  if (timeLeft === null) return null;
+
+  const h = Math.floor(timeLeft / 3600);
+  const m = Math.floor((timeLeft % 3600) / 60);
+  const s = timeLeft % 60;
+  
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function AgentesPage({ userId, initialAutopilot, intervalHours }: { userId: string, initialAutopilot: boolean, intervalHours: number }) {
   const { mutateAsync: toggleAutopilot, isPending } = useToggleAutopilot();
+  const countdown = useAutopilotCountdown(initialAutopilot, intervalHours);
 
   const handleToggle = () => {
     toggleAutopilot({ userId, newState: !initialAutopilot });
@@ -79,9 +122,15 @@ function AgentesPage({ userId, initialAutopilot }: { userId: string, initialAuto
               <h2 className="text-xl font-bold tracking-tight">Piloto Automático</h2>
               <p className="text-sm text-muted-foreground">
                 {initialAutopilot 
-                  ? "Orquestrador LIGADO. O fluxo Extrator > Scout > Redator > Sender rodará a cada 3 horas."
+                  ? `Orquestrador LIGADO. O fluxo Extrator > Scout > Analista > Redator > Sender rodará a cada ${intervalHours} hora(s).`
                   : "Orquestrador DESLIGADO. O fluxo automatizado está em pausa."}
               </p>
+              {countdown && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1.5 text-sm font-mono text-primary font-medium shadow-sm">
+                  <Activity className="h-4 w-4 animate-pulse" />
+                  Próximo ciclo em: {countdown}
+                </div>
+              )}
             </div>
           </div>
           <Button 
