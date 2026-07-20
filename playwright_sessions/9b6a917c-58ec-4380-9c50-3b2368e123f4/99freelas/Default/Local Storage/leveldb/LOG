@@ -1,0 +1,4 @@
+2026/07/20-10:17:29.377 12679 Creating DB /home/raphael/codigos/projetos_node/FreelaOS/agents/playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/Default/Local Storage/leveldb since it was missing.
+2026/07/20-10:17:29.430 12679 Reusing MANIFEST /home/raphael/codigos/projetos_node/FreelaOS/agents/playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/Default/Local Storage/leveldb/MANIFEST-000001
+2026/07/20-10:17:29.430 12679 Recovering log #3
+2026/07/20-10:17:29.430 12679 Reusing old log /home/raphael/codigos/projetos_node/FreelaOS/agents/playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/Default/Local Storage/leveldb/000003.log 

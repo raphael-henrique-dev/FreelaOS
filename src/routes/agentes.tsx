@@ -1,14 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Activity, Power } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
+import { Activity, Power, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { agents, type Agent } from "@/lib/mock-data";
+import { useAutopilotStatus, useToggleAutopilot } from "@/queries/agentes";
 
 export const Route = createFileRoute("/agentes")({
   head: () => ({
@@ -17,52 +15,41 @@ export const Route = createFileRoute("/agentes")({
       { name: "description", content: "Sua equipe de agentes de IA especializados: prospecção, análise, propostas e mais." },
     ],
   }),
-  component: AgentesPage,
+  component: AgentesPageWrapper,
 });
 
-function AgentesPage() {
-  const [autopilot, setAutopilot] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+function AgentesPageWrapper() {
+  const { data, isLoading, error } = useAutopilotStatus();
 
-  useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      setUserId(session.user.id);
-      
-      const { data } = await supabase.from("configuracoes_usuario").select("piloto_automatico_ativado").eq("perfil_id", session.user.id).single();
-      if (data) {
-        setAutopilot(data.piloto_automatico_ativado || false);
-      }
-    }
-    load();
-  }, []);
-
-  async function toggleAutopilot() {
-    const newState = !autopilot;
-    setAutopilot(newState);
-    if (!userId) return;
-    
-    const { error } = await supabase.from("configuracoes_usuario").update({ piloto_automatico_ativado: newState }).eq("perfil_id", userId);
-    
-    if (error) {
-      toast.error("Erro ao alterar piloto automático");
-      setAutopilot(!newState);
-    } else {
-      toast.success(newState ? "Motor Iniciado! O piloto automático vai orquestrar a equipe." : "Motor Desligado. Operação manual.");
-      
-      // Notifica o backend Python para acordar/desligar a thread background
-      try {
-        await fetch('http://localhost:8000/api/autopilot/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId })
-        });
-      } catch (err) {
-        console.error("Erro ao acordar o orquestrador no backend:", err);
-      }
-    }
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageContainer>
+    );
   }
+
+  if (error || !data) {
+    return (
+      <PageContainer>
+        <div className="flex h-64 items-center justify-center text-destructive">
+          Erro ao carregar configurações.
+        </div>
+      </PageContainer>
+    );
+  }
+
+  return <AgentesPage userId={data.userId} initialAutopilot={data.autopilot} />;
+}
+
+function AgentesPage({ userId, initialAutopilot }: { userId: string, initialAutopilot: boolean }) {
+  const { mutateAsync: toggleAutopilot, isPending } = useToggleAutopilot();
+
+  const handleToggle = () => {
+    toggleAutopilot({ userId, newState: !initialAutopilot });
+  };
 
   return (
     <PageContainer>
@@ -77,12 +64,12 @@ function AgentesPage() {
       />
 
       {/* MASTER SWITCH: MOTOR */}
-      <Card className={`mb-6 border-2 transition-colors ${autopilot ? 'border-primary shadow-[0_0_20px_rgba(var(--primary),0.3)] bg-primary/5' : 'border-border/60 bg-card/60'}`}>
+      <Card className={`mb-6 border-2 transition-colors ${initialAutopilot ? 'border-primary shadow-[0_0_20px_rgba(var(--primary),0.3)] bg-primary/5' : 'border-border/60 bg-card/60'}`}>
         <CardContent className="flex flex-col sm:flex-row items-center justify-between p-6 gap-6">
           <div className="flex items-center gap-4">
-            <div className={`relative flex h-16 w-16 items-center justify-center rounded-full border-4 transition-colors ${autopilot ? 'border-primary/30 bg-primary/20' : 'border-muted-foreground/20 bg-muted'}`}>
-              <Power className={`h-8 w-8 transition-colors ${autopilot ? 'text-primary' : 'text-muted-foreground/60'}`} />
-              {autopilot && (
+            <div className={`relative flex h-16 w-16 items-center justify-center rounded-full border-4 transition-colors ${initialAutopilot ? 'border-primary/30 bg-primary/20' : 'border-muted-foreground/20 bg-muted'}`}>
+              <Power className={`h-8 w-8 transition-colors ${initialAutopilot ? 'text-primary' : 'text-muted-foreground/60'}`} />
+              {initialAutopilot && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.8)]">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
                 </span>
@@ -91,7 +78,7 @@ function AgentesPage() {
             <div>
               <h2 className="text-xl font-bold tracking-tight">Piloto Automático</h2>
               <p className="text-sm text-muted-foreground">
-                {autopilot 
+                {initialAutopilot 
                   ? "Orquestrador LIGADO. O fluxo Extrator > Scout > Redator > Sender rodará a cada 3 horas."
                   : "Orquestrador DESLIGADO. O fluxo automatizado está em pausa."}
               </p>
@@ -99,18 +86,20 @@ function AgentesPage() {
           </div>
           <Button 
             size="lg" 
-            variant={autopilot ? "destructive" : "default"}
-            className={autopilot ? "" : "bg-gradient-primary shadow-glow"}
-            onClick={toggleAutopilot}
+            variant={initialAutopilot ? "destructive" : "default"}
+            className={initialAutopilot ? "" : "bg-gradient-primary shadow-glow"}
+            onClick={handleToggle}
+            disabled={isPending}
           >
-            {autopilot ? "Desligar Motor" : "Ligar Motor"}
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            {initialAutopilot ? "Desligar Motor" : "Ligar Motor"}
           </Button>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {agents.map((a) => (
-          <AgentCard key={a.id} agent={a} isAuto={autopilot} />
+          <AgentCard key={a.id} agent={a} isAuto={initialAutopilot} />
         ))}
       </div>
     </PageContainer>

@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Github, Linkedin, Sparkles, Zap, Save, Loader2, Trash2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { api } from "@/core/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,20 +14,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { PageContainer, PageHeader } from "@/components/page-header";
 
+import { useConfiguracoesData, useSaveConfiguracoes, defaultIntegrations } from "@/queries/configuracoes";
+
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({ meta: [{ title: "Configurações · FreelaOS" }] }),
-  component: ConfigPage,
+  component: ConfigPageWrapper,
 });
-
-const defaultIntegrations = [
-  { id: "99freelas", name: "99Freelas", desc: "Sincronize propostas e mensagens", enabled: false, ignoreExclusive: true },
-  { id: "workana", name: "Workana", desc: "Coleta automática de projetos", enabled: false },
-  { id: "github", name: "GitHub", desc: "Vincule portfólio e repositórios", enabled: false },
-  { id: "linkedin", name: "LinkedIn", desc: "Sync de experiência profissional", enabled: false },
-  { id: "openai", name: "OpenAI", desc: "Motor padrão dos agentes", enabled: false },
-  { id: "claude", name: "Claude", desc: "Motor alternativo para propostas longas", enabled: false },
-  { id: "gemini", name: "Google Gemini", desc: "Análise multimodal de briefings", enabled: false },
-];
 
 const availableModels = [
   { id: "padrao", name: "Padrão", desc: "Tom equilibrado com estrutura: intro, entendimento, plano e valor." },
@@ -35,182 +28,104 @@ const availableModels = [
   { id: "personalizado", name: "Personalizado", desc: "Crie seu próprio modelo de proposta instruindo o agente com suas regras." }
 ];
 
-function ConfigPage() {
-  const [loadingData, setLoadingData] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+function ConfigPageWrapper() {
+  const { data, isLoading, error } = useConfiguracoesData();
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <PageContainer>
+        <div className="flex h-64 items-center justify-center text-destructive">
+          Erro ao carregar configurações. {(error as Error)?.message}
+        </div>
+      </PageContainer>
+    );
+  }
+
+  return <ConfigPage initialData={data} />;
+}
+
+function ConfigPage({ initialData }: { initialData: any }) {
+  const { mutateAsync: saveConfig, isPending: saving } = useSaveConfiguracoes();
+
+  const userId = initialData.user.id;
+  
+  // Parse initial data
+  const perfil = initialData.perfil || {};
+  const config = initialData.config || {};
 
   // Perfil State
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [cidade, setCidade] = useState("");
-  const [fuso, setFuso] = useState("GMT-3");
-  const [bio, setBio] = useState("");
-  const [iniciais, setIniciais] = useState("");
+  const [nome, setNome] = useState(perfil.nome || "");
+  const [email] = useState(initialData.user.email || "");
+  const [cidade, setCidade] = useState(perfil.cidade || "");
+  const [fuso, setFuso] = useState(perfil.fuso_horario || "GMT-3");
+  const [bio, setBio] = useState(perfil.bio || "");
+  
+  const parts = (perfil.nome || "Usuário").split(" ").filter(Boolean);
+  const defaultIniciais = parts.length > 1 
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : parts[0]?.substring(0, 2).toUpperCase() || "US";
+  const [iniciais] = useState(defaultIniciais);
 
   // Stacks & Experience
-  const [habilidades, setHabilidades] = useState<string[]>([]);
+  const [habilidades, setHabilidades] = useState<string[]>(perfil.habilidades || []);
   const [novaHabilidade, setNovaHabilidade] = useState("");
-  const [senioridade, setSenioridade] = useState("");
+  const [senioridade, setSenioridade] = useState(perfil.senioridade || "Pleno");
 
   // Pricing & Languages
-  const [idiomas, setIdiomas] = useState<{idioma: string, nivel: string}[]>([]);
-  const [valorHora, setValorHora] = useState<number>(0);
-  const [valorProjeto, setValorProjeto] = useState<number>(0);
-  const [moedaBase, setMoedaBase] = useState("BRL");
+  const [idiomas, setIdiomas] = useState<{idioma: string, nivel: string}[]>(perfil.idiomas || []);
+  const [valorHora, setValorHora] = useState<number>(perfil.valor_hora_minimo || 0);
+  const [valorProjeto, setValorProjeto] = useState<number>(perfil.valor_projeto_minimo || 0);
+  const [moedaBase, setMoedaBase] = useState(perfil.moeda_base || "BRL");
 
   // Configurações
-  const [integracoes, setIntegracoes] = useState(defaultIntegrations);
-  const [modeloAtivo, setModeloAtivo] = useState("padrao");
-  const [promptPersonalizado, setPromptPersonalizado] = useState("");
-  const [limiteAutomacao, setLimiteAutomacao] = useState(70);
-  const [automacaoAtivada, setAutomacaoAtivada] = useState(true);
-  const [revisaoHumana, setRevisaoHumana] = useState(true);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        setUserId(user.id);
-        setEmail(user.email || "");
-
-        // Carrega Perfil
-        const { data: perfil } = await supabase
-          .from("perfis")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        if (perfil) {
-          setNome(perfil.nome || "");
-          setCidade(perfil.cidade || "");
-          setFuso(perfil.fuso_horario || "GMT-3");
-          setBio(perfil.bio || "");
-          setHabilidades(perfil.habilidades || []);
-          setSenioridade(perfil.senioridade || "Pleno");
-          setIdiomas(perfil.idiomas || []);
-          setValorHora(perfil.valor_hora_minimo || 0);
-          setValorProjeto(perfil.valor_projeto_minimo || 0);
-          setMoedaBase(perfil.moeda_base || "BRL");
-
-          const parts = (perfil.nome || "Usuário").split(" ").filter(Boolean);
-          if (parts.length > 1) {
-            setIniciais((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
-          } else if (parts.length === 1) {
-            setIniciais(parts[0].substring(0, 2).toUpperCase());
-          }
-        }
-
-        // Carrega Configuracoes
-        const { data: config } = await supabase
-          .from("configuracoes_usuario")
-          .select("*")
-          .eq("perfil_id", user.id)
-          .single();
-
-        if (config) {
-          if (config.integracoes) {
-            setIntegracoes(prev => prev.map(int => {
-              const val = config.integracoes[int.id];
-              if (typeof val === 'boolean') {
-                return { ...int, enabled: val };
-              } else if (val && typeof val === 'object') {
-                return { ...int, enabled: val.enabled, ignoreExclusive: val.ignoreExclusive ?? true };
-              }
-              return int;
-            }));
-          }
-          if (config.modelos_proposta) {
-            if (Array.isArray(config.modelos_proposta)) {
-              setModeloAtivo("padrao");
-            } else {
-              setModeloAtivo(config.modelos_proposta.ativo || "padrao");
-              setPromptPersonalizado(config.modelos_proposta.personalizado_prompt || "");
-              if (config.modelos_proposta.limite_automacao !== undefined) {
-                setLimiteAutomacao(config.modelos_proposta.limite_automacao);
-              }
-              if (config.modelos_proposta.automacao_ativada !== undefined) {
-                setAutomacaoAtivada(config.modelos_proposta.automacao_ativada);
-              }
-            }
-          }
-          if (config.revisao_humana_obrigatoria !== undefined) {
-            setRevisaoHumana(config.revisao_humana_obrigatoria);
-          }
-        } else {
-          // Se não existir, insere default
-          const defaultIntJson = defaultIntegrations.reduce((acc, curr) => ({ ...acc, [curr.id]: curr.enabled }), {});
-          await supabase.from("configuracoes_usuario").insert({
-            perfil_id: user.id,
-            integracoes: defaultIntJson,
-            modelos_proposta: { ativo: "padrao", personalizado_prompt: "", limite_automacao: 70, automacao_ativada: true }
-          });
-        }
-        
-        // Verifica status da conexão no 99Freelas
-        try {
-          const authRes = await fetch(`http://localhost:8000/api/auth/99freelas/status?user_id=${user.id}`);
-          if (authRes.ok) {
-            const authJson = await authRes.json();
-            setIsConnected99(authJson.connected);
-          }
-        } catch (e) {
-          console.error("Erro ao checar status do 99freelas:", e);
-        }
-
-      } catch (error) {
-        console.error("Erro ao carregar configurações", error);
-      } finally {
-        setLoadingData(false);
+  const initialIntegrations = defaultIntegrations.map(int => {
+    if (config.integracoes) {
+      const val = config.integracoes[int.id];
+      if (typeof val === 'boolean') {
+        return { ...int, enabled: val };
+      } else if (val && typeof val === 'object') {
+        return { ...int, enabled: val.enabled, ignoreExclusive: val.ignoreExclusive ?? true };
       }
     }
-    loadData();
-  }, []);
+    return int;
+  });
+
+  const [integracoes, setIntegracoes] = useState(initialIntegrations);
+  
+  const [modeloAtivo, setModeloAtivo] = useState(Array.isArray(config.modelos_proposta) ? "padrao" : (config.modelos_proposta?.ativo || "padrao"));
+  const [promptPersonalizado, setPromptPersonalizado] = useState(config.modelos_proposta?.personalizado_prompt || "");
+  const [limiteAutomacao, setLimiteAutomacao] = useState(config.modelos_proposta?.limite_automacao ?? 70);
+  const [automacaoAtivada, setAutomacaoAtivada] = useState(config.modelos_proposta?.automacao_ativada ?? true);
+  const [revisaoHumana, setRevisaoHumana] = useState(config.revisao_humana_obrigatoria ?? true);
+
+  const [connecting99, setConnecting99] = useState(false);
+  const [isConnected99, setIsConnected99] = useState(initialData.isConnected99);
 
   const handleSave = async () => {
-    if (!userId) return;
-    setSaving(true);
-    try {
-      // Salva Perfil
-      const { error: perfilError } = await supabase
-        .from("perfis")
-        .update({
-          nome,
-          cidade,
-          fuso_horario: fuso,
-          bio,
-          habilidades,
-          senioridade,
-          idiomas,
-          valor_hora_minimo: valorHora,
-          valor_projeto_minimo: valorProjeto,
-          moeda_base: moedaBase
-        })
-        .eq("id", userId);
-
-      if (perfilError) throw perfilError;
-
-      // Salva Configurações
-      const integracoesJson = integracoes.reduce((acc, curr) => ({ ...acc, [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive } }), {});
-      
-      const { error: configError } = await supabase
-        .from("configuracoes_usuario")
-        .update({
-          integracoes: integracoesJson,
-          modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada },
-          revisao_humana_obrigatoria: revisaoHumana
-        })
-        .eq("perfil_id", userId);
-
-      if (configError) throw configError;
-
-      toast.success("Configurações salvas com sucesso!");
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar alterações");
-    } finally {
-      setSaving(false);
-    }
+    const integracoesJson = integracoes.reduce((acc, curr) => ({ ...acc, [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive } }), {});
+    
+    await saveConfig({
+      userId,
+      perfilPayload: {
+        nome, cidade, fuso_horario: fuso, bio, habilidades, senioridade, idiomas,
+        valor_hora_minimo: valorHora, valor_projeto_minimo: valorProjeto, moeda_base: moedaBase
+      },
+      configPayload: {
+        integracoes: integracoesJson,
+        modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada },
+        revisao_humana_obrigatoria: revisaoHumana
+      }
+    });
   };
 
   const addHabilidade = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -235,28 +150,17 @@ function ConfigPage() {
     setIntegracoes(prev => prev.map(int => int.id === id ? { ...int, ignoreExclusive: checked } : int));
   };
 
-  const [connecting99, setConnecting99] = useState(false);
-  const [isConnected99, setIsConnected99] = useState(false);
   const handleConnect99Freelas = async () => {
     setConnecting99(true);
     toast.info("Abrindo navegador... Faça o login na janela que aparecerá.", { duration: 8000 });
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Usuário não autenticado");
-
-      const res = await fetch("http://localhost:8000/api/auth/99freelas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: session.user.id })
-      });
-
-      const json = await res.json();
-      if (res.ok && json.status === "success") {
-        toast.success(json.message);
+      const res = await api.post("/api/auth/99freelas", { user_id: userId });
+      if (res.data && res.data.status === "success") {
+        toast.success(res.data.message);
         setIsConnected99(true);
       } else {
-        toast.error(json.message || "Erro desconhecido ao conectar.");
+        toast.error(res.data?.message || "Erro desconhecido ao conectar.");
       }
     } catch (err: any) {
       toast.error(err.message || "Falha de conexão com a API.");
@@ -269,36 +173,17 @@ function ConfigPage() {
     if (!confirm("Tem certeza que deseja desconectar o 99Freelas? O bot não poderá mais enviar propostas automaticamente.")) return;
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const res = await fetch("http://localhost:8000/api/auth/99freelas", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: session.user.id })
-      });
-
-      const json = await res.json();
-      if (res.ok) {
-        toast.success(json.message);
+      const res = await api.delete("/api/auth/99freelas", { data: { user_id: userId } });
+      if (res.data) {
+        toast.success(res.data.message);
         setIsConnected99(false);
       } else {
-        toast.error(json.message || "Erro ao desconectar.");
+        toast.error(res.data?.message || "Erro desconhecido ao desconectar.");
       }
     } catch (err: any) {
       toast.error(err.message || "Falha de conexão com a API.");
     }
   };
-
-  if (loadingData) {
-    return (
-      <PageContainer>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </PageContainer>
-    );
-  }
 
   return (
     <PageContainer>

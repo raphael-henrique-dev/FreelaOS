@@ -8,71 +8,73 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/page-header";
 import { currency, scoreColor, statusVariant } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/core/api";
 
 export const Route = createFileRoute("/oportunidades/$id")({
   loader: async ({ params }) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    const { data } = await supabase.from("oportunidades").select("*").eq("id", params.id).single();
-    if (!data) throw notFound();
-    
-    // Busca os ids para navegação (Prev / Next)
-    let prevId = null;
-    let nextId = null;
-    
-    if (session?.user?.id) {
-      const { data: allOps } = await supabase
-        .from("oportunidades")
-        .select("id, status, plataforma, score, titulo, cliente, stack")
-        .eq("perfil_id", session.user.id)
-        .order("criado_em", { ascending: false });
-        
-      if (allOps) {
-        const search = localStorage.getItem("freelaos_ops_search") || "";
-        const statuses = JSON.parse(localStorage.getItem("freelaos_ops_statuses") || "[]");
-        const platforms = JSON.parse(localStorage.getItem("freelaos_ops_platforms") || "[]");
-        const minScore = parseInt(localStorage.getItem("freelaos_ops_score") || "0", 10);
-
-        const filteredOps = allOps.filter((op: any) => {
-          if (op.status === "Ignorada") return false;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data } = await api.get(`/api/opportunities/${params.id}`);
+      if (!data) throw notFound();
+      
+      // Busca os ids para navegação (Prev / Next)
+      let prevId = null;
+      let nextId = null;
+      
+      if (session?.user?.id) {
+        const { data: allOps } = await api.get(`/api/opportunities?user_id=${session.user.id}`);
           
-          if (search) {
-            const term = search.toLowerCase();
-            const titleMatch = op.titulo?.toLowerCase().includes(term);
-            const clientMatch = op.cliente?.toLowerCase().includes(term);
-            const stackMatch = op.stack?.some((s: string) => s.toLowerCase().includes(term));
-            if (!titleMatch && !clientMatch && !stackMatch) return false;
-          }
-          if (statuses.length > 0 && !statuses.includes(op.status)) return false;
-          if (platforms.length > 0 && !platforms.includes(op.plataforma)) return false;
-          if (minScore > 0 && (op.score || 0) < minScore) return false;
-          return true;
-        });
+        if (allOps) {
+          const search = localStorage.getItem("freelaos_ops_search") || "";
+          const statuses = JSON.parse(localStorage.getItem("freelaos_ops_statuses") || "[]");
+          const platforms = JSON.parse(localStorage.getItem("freelaos_ops_platforms") || "[]");
+          const minScore = parseInt(localStorage.getItem("freelaos_ops_score") || "0", 10);
 
-        const idx = filteredOps.findIndex((o: any) => o.id === params.id);
-        if (idx > 0) prevId = filteredOps[idx - 1].id; // Mais recente (Anterior na tela)
-        if (idx !== -1 && idx < filteredOps.length - 1) nextId = filteredOps[idx + 1].id; // Mais antiga (Próxima)
+          const filteredOps = allOps.filter((op: any) => {
+            if (op.status === "Ignorada") return false;
+            
+            if (search) {
+              const term = search.toLowerCase();
+              const titleMatch = op.titulo?.toLowerCase().includes(term);
+              const clientMatch = (op.clientes?.nome || op.cliente)?.toLowerCase().includes(term);
+              const stackMatch = op.stack?.some((s: string) => s.toLowerCase().includes(term));
+              if (!titleMatch && !clientMatch && !stackMatch) return false;
+            }
+            if (statuses.length > 0 && !statuses.includes(op.status)) return false;
+            if (platforms.length > 0 && !platforms.includes(op.plataforma)) return false;
+            if (minScore > 0 && (op.score || 0) < minScore) return false;
+            return true;
+          });
+
+          const idx = filteredOps.findIndex((o: any) => o.id === params.id);
+          if (idx > 0) prevId = filteredOps[idx - 1].id; // Mais recente (Anterior na tela)
+          if (idx !== -1 && idx < filteredOps.length - 1) nextId = filteredOps[idx + 1].id; // Mais antiga (Próxima)
+        }
       }
+      
+      // Mapeia para um formato mais limpo para o frontend
+      const op = {
+        id: data.id,
+        title: data.titulo,
+        client: data.clientes?.nome || data.cliente || "Confidencial",
+        platform: data.plataforma,
+        status: data.status,
+        createdAt: new Date(data.criado_em).toLocaleDateString("pt-BR"),
+        description: data.descricao,
+        budget: data.orcamento,
+        deadline: data.prazo,
+        stack: data.stack || [],
+        score: data.score || 0,
+        explicacao: data.explicacao_score || "Nenhum parecer gerado.",
+        url: data.url || "",
+        proposta_ia: data.proposta_ia || "",
+      };
+      return { op, prevId, nextId };
+    } catch(e) {
+      console.error(e);
+      throw notFound();
     }
-    
-    // Mapeia para um formato mais limpo para o frontend
-    const op = {
-      id: data.id,
-      title: data.titulo,
-      client: data.cliente || "Confidencial",
-      platform: data.plataforma,
-      status: data.status,
-      createdAt: new Date(data.criado_em).toLocaleDateString("pt-BR"),
-      description: data.descricao,
-      budget: data.orcamento,
-      deadline: data.prazo,
-      stack: data.stack || [],
-      score: data.score || 0,
-      explicacao: data.explicacao_score || "Nenhum parecer gerado.",
-      url: data.url || "",
-      proposta_ia: data.proposta_ia || "",
-    };
-    return { op, prevId, nextId };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -98,13 +100,7 @@ function OpDetail() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) throw new Error("Usuário não logado");
       
-      const res = await fetch("http://localhost:8000/api/analista/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vaga_id: op.id, user_id: session.user.id })
-      });
-      
-      if (!res.ok) throw new Error("Falha na API do Analista");
+      const res = await api.post("/api/analista/evaluate", { vaga_id: op.id, user_id: session.user.id });
       
       // Recarrega para buscar os dados frescos (score, status, parecer)
       window.location.reload();
@@ -117,19 +113,12 @@ function OpDetail() {
 
   async function handleDelete() {
     if (!confirm("Deseja realmente ignorar esta oportunidade?")) return;
-    const { data, error } = await supabase.from("oportunidades").update({ status: "Ignorada" }).eq("id", op.id).select();
-    
-    if (error) {
+    try {
+      await api.delete(`/api/opportunities/${op.id}`);
+      navigate({ to: "/oportunidades" });
+    } catch (error: any) {
       alert("Erro ao remover oportunidade: " + error.message);
-      return;
     }
-    
-    if (!data || data.length === 0) {
-      alert("Falha: O banco recusou a atualização. Verifique suas políticas (RLS) do Supabase para UPDATE.");
-      return;
-    }
-
-    navigate({ to: "/oportunidades" });
   }
 
   return (

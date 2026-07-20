@@ -10,31 +10,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/core/api";
 import { PageContainer } from "@/components/page-header";
 import { currency, statusVariant } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/propostas/$id")({
   loader: async ({ params }) => {
-    const { data } = await supabase.from("oportunidades").select("*").eq("id", params.id).single();
-    if (!data) throw notFound();
+    try {
+      const { data } = await api.get(`/api/opportunities/${params.id}`);
+      if (!data) throw notFound();
 
-    const op = {
-      id: data.id,
-      title: data.titulo,
-      client: data.cliente || "Confidencial",
-      platform: data.plataforma,
-      status: data.status,
-      description: data.descricao,
-      budget: data.orcamento,
-      deadline: data.prazo,
-      stack: data.stack || [],
-      score: data.score || 0,
-      proposta_ia: data.proposta_ia || "",
-      valor_proposta: data.valor_proposta || 0,
-      prazo_proposta: data.prazo_proposta || "",
-    };
-    return { op };
+      const op = {
+        id: data.id,
+        title: data.titulo,
+        client: data.clientes?.nome || data.cliente || "Confidencial",
+        platform: data.plataforma,
+        status: data.status,
+        description: data.descricao,
+        budget: data.orcamento,
+        deadline: data.prazo,
+        stack: data.stack || [],
+        score: data.score || 0,
+        proposta_ia: data.proposta_ia || "",
+        valor_proposta: data.valor_proposta || 0,
+        prazo_proposta: data.prazo_proposta || "",
+      };
+      return { op };
+    } catch(e) {
+      console.error(e);
+      throw notFound();
+    }
   },
   head: ({ loaderData }) => ({
     meta: [{ title: loaderData ? `Proposta · ${loaderData.op.title}` : "Proposta" }],
@@ -66,14 +72,9 @@ function PropostaEditor() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
       
-      const res = await fetch("http://localhost:8000/api/redator/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vaga_id: op.id, user_id: session.user.id })
-      });
+      const res = await api.post("/api/redator/draft", { vaga_id: op.id, user_id: session.user.id });
       
-      if (!res.ok) throw new Error("Erro na API");
-      const json = await res.json();
+      const json = res.data;
       setText(json.proposta || "");
       setValor(json.valor || 0);
       setPrazo(json.prazo || "");
@@ -94,20 +95,16 @@ function PropostaEditor() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
       
-      const res = await fetch("http://localhost:8000/api/sender/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          vaga_id: op.id, 
-          user_id: session.user.id,
-          texto: text,
-          valor: valor,
-          prazo: prazo
-        })
+      const res = await api.post("/api/sender/submit", { 
+        vaga_id: op.id, 
+        user_id: session.user.id,
+        texto: text,
+        valor: valor,
+        prazo: prazo
       });
       
-      const json = await res.json();
-      if (res.ok) {
+      const json = res.data;
+      if (json) {
         toast.success(json.message);
         setIsSentLocal(true);
       } else {

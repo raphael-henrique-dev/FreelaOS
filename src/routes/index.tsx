@@ -33,6 +33,8 @@ import {
   statusVariant,
 } from "@/lib/mock-data";
 
+import { useOportunidades } from "@/queries/oportunidades";
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -44,7 +46,6 @@ export const Route = createFileRoute("/")({
 });
 
 const stats = [
-  { label: "Projetos hoje", value: dashboardStats.found, delta: "+18%", icon: Briefcase },
   { label: "Propostas enviadas", value: dashboardStats.proposals, delta: "+9%", icon: Send },
   { label: "Taxa de resposta", value: `${dashboardStats.responseRate}%`, delta: "+4pp", icon: PercentSquare },
   { label: "Projetos fechados", value: dashboardStats.closed, delta: "+2", icon: CheckCircle2 },
@@ -52,73 +53,48 @@ const stats = [
 ];
 
 function Dashboard() {
-  const [latestOps, setLatestOps] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [opsToday, setOpsToday] = useState(0);
-  const [dynamicAgents, setDynamicAgents] = useState<any[]>([
-    { id: "1", name: "Scout IA", emoji: "🕵️", status: "monitoring", color: "#6366f1", lastActivity: "Conectando..." },
-    { id: "2", name: "Analista IA", emoji: "🧠", status: "idle", color: "#ec4899", lastActivity: "Conectando..." },
+  const { data: rawOpportunities, isLoading } = useOportunidades();
+  const data = rawOpportunities || [];
+  
+  const latestOps = data.filter((op: any) => op.status !== "Ignorada").slice(0, 5);
+  
+  // 1. Conectar Gráfico de Oportunidades
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', '');
+  });
+
+  const chartData = last7Days.map(dayStr => {
+    const count = data.filter((op: any) => {
+      const opDate = new Date(op.criado_em).toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', '');
+      return opDate === dayStr;
+    }).length;
+    return { day: dayStr, count };
+  });
+
+  // 2. Conectar Painel de Agentes
+  const now = new Date();
+  const lastOp = data[0] ? new Date(data[0].criado_em) : null;
+  const diffMinutes = lastOp ? Math.floor((now.getTime() - lastOp.getTime()) / 60000) : Infinity;
+  
+  let tempoStr = "Sem atividade";
+  if (diffMinutes < 1) tempoStr = "Agora mesmo";
+  else if (diffMinutes < 60) tempoStr = `Há ${diffMinutes} min`;
+  else if (diffMinutes < 1440) tempoStr = `Há ${Math.floor(diffMinutes / 60)}h`;
+  
+  const isWorking = diffMinutes < 10;
+
+  const dynamicAgents = [
+    { id: "1", name: "Scout IA", emoji: "🕵️", status: isWorking ? "working" : "monitoring", color: "#6366f1", lastActivity: tempoStr },
+    { id: "2", name: "Analista IA", emoji: "🧠", status: isWorking ? "working" : "idle", color: "#ec4899", lastActivity: tempoStr },
     { id: "3", name: "Redator IA", emoji: "✍️", status: "idle", color: "#14b8a6", lastActivity: "Aguardando comando" },
-  ]);
+  ];
 
-  useEffect(() => {
-    async function fetchDashboardData() {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      let query = supabase.from("oportunidades").select("*");
-      if (session?.user?.id) {
-        query = query.eq("perfil_id", session.user.id);
-      }
+  // 3. Oportunidades hoje
+  const todayStr = new Date().toLocaleDateString("pt-BR");
+  const opsToday = data.filter((op: any) => new Date(op.criado_em).toLocaleDateString("pt-BR") === todayStr).length;
 
-      const { data, error } = await query
-        .order("criado_em", { ascending: false })
-        .limit(100);
-
-      if (data) {
-        setLatestOps(data.filter((op: any) => op.status !== "Ignorada").slice(0, 5));
-
-        // 1. Conectar Gráfico de Oportunidades
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() - (6 - i));
-          return d.toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', '');
-        });
-
-        const chart = last7Days.map(dayStr => {
-          const count = data.filter(op => {
-            const opDate = new Date(op.criado_em).toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', '');
-            return opDate === dayStr;
-          }).length;
-          return { day: dayStr, count };
-        });
-        setChartData(chart);
-
-        // 2. Conectar Painel de Agentes
-        const now = new Date();
-        const lastOp = data[0] ? new Date(data[0].criado_em) : null;
-        const diffMinutes = lastOp ? Math.floor((now.getTime() - lastOp.getTime()) / 60000) : Infinity;
-        
-        let tempoStr = "Sem atividade";
-        if (diffMinutes < 1) tempoStr = "Agora mesmo";
-        else if (diffMinutes < 60) tempoStr = `Há ${diffMinutes} min`;
-        else if (diffMinutes < 1440) tempoStr = `Há ${Math.floor(diffMinutes / 60)}h`;
-        
-        const isWorking = diffMinutes < 10;
-
-        setDynamicAgents([
-          { id: "1", name: "Scout IA", emoji: "🕵️", status: isWorking ? "working" : "monitoring", color: "#6366f1", lastActivity: tempoStr },
-          { id: "2", name: "Analista IA", emoji: "🧠", status: isWorking ? "working" : "idle", color: "#ec4899", lastActivity: tempoStr },
-          { id: "3", name: "Redator IA", emoji: "✍️", status: "idle", color: "#14b8a6", lastActivity: "Aguardando comando" },
-        ]);
-        // 3. Oportunidades hoje
-        const todayStr = new Date().toLocaleDateString("pt-BR");
-        const countToday = data.filter(op => new Date(op.criado_em).toLocaleDateString("pt-BR") === todayStr).length;
-        setOpsToday(countToday);
-      }
-    }
-
-    fetchDashboardData();
-  }, []);
 
   return (
     <div className="relative">
@@ -139,6 +115,16 @@ function Dashboard() {
         </header>
 
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <Card className="border-border/60 bg-card/60 backdrop-blur">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Projetos hoje</p>
+                <Briefcase className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="mt-3 text-2xl font-semibold tracking-tight">{opsToday}</p>
+              <p className="mt-1 text-[11px] font-medium text-success">+18% vs. semana anterior</p>
+            </CardContent>
+          </Card>
           {stats.map((s) => (
             <Card key={s.label} className="border-border/60 bg-card/60 backdrop-blur">
               <CardContent className="p-4">
@@ -253,8 +239,6 @@ function Dashboard() {
                             </Link>
                             <Badge variant="outline" className="text-[10px] whitespace-nowrap bg-background/50">{op.plataforma}</Badge>
                           </div>
-                          
-                          {/* Stacks */}
                           {op.stack && op.stack.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {op.stack.slice(0, 3).map((s: string) => (
