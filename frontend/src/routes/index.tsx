@@ -229,7 +229,7 @@ function Dashboard() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  latestOps.map((op) => (
+                  latestOps.map((op: any) => (
                     <TableRow key={op.id} className="border-border/50">
                       <TableCell className="max-w-[400px]">
                         <div className="flex flex-col gap-1.5">

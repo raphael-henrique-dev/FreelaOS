@@ -125,7 +125,7 @@ Orçamento: R$ {vaga.get('orcamento')}
 3. Escreva em Português do Brasil de forma natural (evite clichês de IA).
 4. Assine no final com o nome do profissional.
 5. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
-6. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS:
+6. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
 {{
   "texto_proposta": "Olá! ...",
   "valor": 1500,

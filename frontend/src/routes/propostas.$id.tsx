@@ -82,7 +82,7 @@ function PropostaEditor() {
       if (isManual) toast.success("Nova proposta gerada com sucesso!");
     } catch (e) {
       toast.error("Falha ao gerar proposta com Redator IA.");
-      setText("Erro ao conectar com o Agente Redator.");
+      setText(`Erro ao conectar com o Agente Redator. ${e}`);
     } finally {
       setLoading(false);
     }

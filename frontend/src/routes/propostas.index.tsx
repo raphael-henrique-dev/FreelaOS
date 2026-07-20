@@ -71,7 +71,7 @@ function PropostasList() {
           </div>
         )}
 
-        {!loading && items.map((op) => (
+        {!loading && items.map((op: any) => (
           <Card key={op.id} className="border-border/60 bg-card/60 transition hover:border-primary/40">
             <CardContent className="space-y-3 p-5">
               <div className="flex items-center justify-between gap-2">

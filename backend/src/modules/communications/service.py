@@ -1,6 +1,8 @@
+from asyncio.log import logger
 import os
 import re
 from playwright.sync_api import sync_playwright
+from backend.src.modules.auth.service import AuthService
 from backend.src.modules.opportunities.repository import OpportunityRepository
 
 opp_repo = OpportunityRepository()
@@ -24,6 +26,7 @@ class SenderService:
             raise ValueError("URL inválida ou plataforma não suportada para envio automático.")
 
         with sync_playwright() as p:
+            
             browser = p.chromium.launch_persistent_context(
                 user_data_dir=session_dir,
                 headless=False,
@@ -46,6 +49,12 @@ class SenderService:
                     link_enviar.click()
                     page.wait_for_load_state("domcontentloaded", timeout=15000)
                 
+
+                if "register" in page.url:
+                    logger.warning(f"[SENDER] Sessão expirada para o usuário {user_id}.")
+                    browser.close()
+                    raise ValueError("Sessão expirada. Por favor, reconecte sua conta 99Freelas.")
+                 
                 textarea = page.locator("#proposta")
                 textarea.wait_for(state="visible", timeout=15000)
                 textarea.fill(texto)

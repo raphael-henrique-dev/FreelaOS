@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # Carrega variáveis de ambiente
-load_dotenv(dotenv_path="../.env")
+load_dotenv()
 
 # Importa as rotas refatoradas
 from backend.src.modules.opportunities.router import router as opportunities_router

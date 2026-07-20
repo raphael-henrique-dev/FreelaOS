@@ -88,16 +88,22 @@ function OpListContainer() {
 }
 
 function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading: boolean }) {
-  const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem("freelaos_ops_search") || "");
+  const [searchTerm, setSearchTerm] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("freelaos_ops_search") || "";
+  });
   const [filterStatuses, setFilterStatuses] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
     const saved = localStorage.getItem("freelaos_ops_statuses");
     return saved ? JSON.parse(saved) : [];
   });
   const [filterPlatforms, setFilterPlatforms] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
     const saved = localStorage.getItem("freelaos_ops_platforms");
     return saved ? JSON.parse(saved) : [];
   });
   const [filterMinScore, setFilterMinScore] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
     const saved = localStorage.getItem("freelaos_ops_score");
     return saved ? parseInt(saved, 10) : 0;
   });
@@ -394,14 +400,18 @@ function OpTable({ groupItems, handleDelete }: { groupItems: any[], handleDelete
                       </div>
                     )}
 
-                    {op.explicacao_score && (
+
+                    {/* parecer da I.A analista em cada card de oportunidade  */}
+
+                    {/* {op.explicacao_score && (
                       <div className="mt-2 flex items-start gap-1.5 p-2 rounded-lg bg-primary/5 border border-primary/10 transition-colors hover:bg-primary/10">
                         <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                         <p className="text-xs text-muted-foreground leading-snug line-clamp-3">
                           <span className="font-medium text-foreground/80">Parecer IA:</span> {op.explicacao_score}
                         </p>
                       </div>
-                    )}
+                    )} */}
+                    
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground align-top pt-4">{op.client}</TableCell>

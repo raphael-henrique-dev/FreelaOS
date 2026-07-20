@@ -15,7 +15,7 @@ class OpportunityRepository:
 
     def get_opportunities(self, user_id: str):
         # Traz as oportunidades ordenadas pela data de criação
-        res = db.table("oportunidades").select("*, clientes(nome)").eq("perfil_id", user_id).order("created_at", desc=True).execute()
+        res = db.table("oportunidades").select("*, clientes(nome)").eq("perfil_id", user_id).order("criado_em", desc=True).execute()
         return res.data
 
     def delete_opportunity(self, vaga_id: str):

@@ -28,10 +28,10 @@ def desconectar_99freelas(req: AuthRequest):
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/auth/99freelas/status")
-def status_99freelas(req: AuthRequest):
+@router.get("/api/auth/99freelas/status")
+def status_99freelas(user_id: str):
     try:
-        is_connected = AuthService.status_99freelas(req.user_id)
+        is_connected = AuthService.status_99freelas(user_id)
         return {"status": "success", "connected": is_connected}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

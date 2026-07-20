@@ -26,10 +26,16 @@ export const Route = createFileRoute("/oportunidades/$id")({
         const { data: allOps } = await api.get(`/api/opportunities?user_id=${session.user.id}`);
           
         if (allOps) {
-          const search = localStorage.getItem("freelaos_ops_search") || "";
-          const statuses = JSON.parse(localStorage.getItem("freelaos_ops_statuses") || "[]");
-          const platforms = JSON.parse(localStorage.getItem("freelaos_ops_platforms") || "[]");
-          const minScore = parseInt(localStorage.getItem("freelaos_ops_score") || "0", 10);
+          let search = "";
+          let statuses = [];
+          let platforms = [];
+          let minScore = 0;
+          if (typeof window !== "undefined") {
+            search = localStorage.getItem("freelaos_ops_search") || "";
+            statuses = JSON.parse(localStorage.getItem("freelaos_ops_statuses") || "[]");
+            platforms = JSON.parse(localStorage.getItem("freelaos_ops_platforms") || "[]");
+            minScore = parseInt(localStorage.getItem("freelaos_ops_score") || "0", 10);
+          }
 
           const filteredOps = allOps.filter((op: any) => {
             if (op.status === "Ignorada") return false;

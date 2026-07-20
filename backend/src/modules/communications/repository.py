@@ -6,7 +6,7 @@ class MessageRepository:
         return duplicata.data and len(duplicata.data) > 0
 
     def get_latest_opportunity_for_client(self, cliente_id: str):
-        op_res = db.table("oportunidades").select("id").eq("cliente_id", cliente_id).order("created_at", desc=True).limit(1).execute()
+        op_res = db.table("oportunidades").select("id").eq("cliente_id", cliente_id).order("criado_em", desc=True).limit(1).execute()
         if op_res.data and len(op_res.data) > 0:
             return op_res.data[0]["id"]
         return None

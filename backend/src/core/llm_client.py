@@ -41,6 +41,11 @@ def generate_json(prompt: str, model: str = 'gemini-3.5-flash', fallback_model: 
         raise ValueError("Resposta vazia retornada pelo LLM.")
         
     clean_json = resposta.text.replace("```json", "").replace("```", "").strip()
+    
+    # Auto-fix para JSONs truncados (Gemini as vezes não fecha a chave no final)
+    if not clean_json.endswith("}"):
+        clean_json += "\n}"
+        
     try:
         return json.loads(clean_json)
     except json.JSONDecodeError as e:
