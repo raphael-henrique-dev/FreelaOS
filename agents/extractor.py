@@ -11,6 +11,7 @@ from analista import avaliar_oportunidade, AvaliacaoRequest
 from redator import gerar_proposta, RedatorRequest
 from sender import submit_proposta, SubmitRequest
 import threading
+import asyncio
 
 router = APIRouter()
 
@@ -159,9 +160,9 @@ def executar_extracao(user_id: str):
                                 
                                 # NOVO: INTEGRAÇÃO COM SENDER (Autopilot)
                                 if revisao_humana:
-                                    print(f"[EXTRACTOR] 🛡️ Revisão humana ativada. Vaga mantida em Rascunho.")
+                                    print(f"[EXTRACTOR] Revisão humana ativada. Vaga mantida em Rascunho.")
                                 else:
-                                    print(f"[EXTRACTOR] 🚀 Revisão humana desligada. Enviando proposta automaticamente!")
+                                    print(f"[EXTRACTOR] Revisão humana desligada. Enviando proposta automaticamente!")
                                     try:
                                         sender_req = SubmitRequest(
                                             vaga_id=vaga_id,
@@ -173,7 +174,7 @@ def executar_extracao(user_id: str):
                                         # Executa o Sender numa Thread isolada para não conflitar com o Playwright do Extrator
                                         threading.Thread(target=submit_proposta, args=(sender_req,)).start()
                                     except Exception as sender_err:
-                                        print(f"[EXTRACTOR] ❌ Erro fatal no Sender: {sender_err}")
+                                        print(f"[EXTRACTOR] Erro fatal no Sender: {sender_err}")
                                     
                             except Exception as redator_err:
                                 print(f"[EXTRACTOR] Erro ao gerar proposta: {redator_err}")
@@ -202,14 +203,14 @@ def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks)
 
 active_autopilots = set()
 
-def autopilot_loop(user_id: str):
+async def autopilot_loop(user_id: str):
     while user_id in active_autopilots:
         try:
             # Verifica se o usuário ainda está com a configuração ativa
             conf_res = supabase.table("configuracoes_usuario").select("piloto_automatico_ativado").eq("perfil_id", user_id).single().execute()
             if conf_res.data and conf_res.data.get("piloto_automatico_ativado"):
                 print(f"\n[AUTOPILOT LOOP] Iniciando ciclo programado para {user_id}")
-                executar_extracao(user_id)
+                await asyncio.to_thread(executar_extracao, user_id)
             else:
                 print(f"[AUTOPILOT LOOP] Desativado no banco para {user_id}. Parando o loop.")
                 active_autopilots.remove(user_id)
@@ -219,7 +220,7 @@ def autopilot_loop(user_id: str):
         
         # Espera 3 horas (10800 segundos) para o próximo ciclo
         print("[AUTOPILOT LOOP] Aguardando 3 horas para o próximo ciclo...")
-        time.sleep(10800)
+        await asyncio.sleep(10800)
 
 
 @router.post("/api/autopilot/check")

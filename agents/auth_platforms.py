@@ -68,6 +68,6 @@ def desconectar_99freelas(req: AuthRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/api/auth/99freelas/status")
-def status_99freelas(user_id: str):
+async def status_99freelas(user_id: str):
     session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "99freelas")
     return {"connected": os.path.exists(session_dir)}
