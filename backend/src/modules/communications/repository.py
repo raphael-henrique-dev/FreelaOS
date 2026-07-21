@@ -1,9 +1,16 @@
 from backend.src.core.database import db
 
 class MessageRepository:
-    def check_duplicate(self, user_id: str, remetente: str, url_origem: str):
-        duplicata = db.table("mensagens").select("id").eq("perfil_id", user_id).eq("remetente_nome", remetente).eq("url_origem", url_origem).eq("lida", False).execute()
-        return duplicata.data and len(duplicata.data) > 0
+    def check_duplicate(self, user_id: str, remetente: str, url_origem: str, conteudo: str):
+        # Para mensagens muito longas, o filtro .eq("conteudo", conteudo) causa o erro HTTP 414 (URI Too Long)
+        # pois o Supabase envia o texto inteiro na URL. Em vez disso, trazemos os registros da conversa
+        # e conferimos o texto no lado do Python.
+        res = db.table("mensagens").select("id, conteudo").eq("perfil_id", user_id).eq("remetente_nome", remetente).eq("url_origem", url_origem).execute()
+        if res.data:
+            for msg in res.data:
+                if msg.get("conteudo") == conteudo:
+                    return True
+        return False
 
     def get_latest_opportunity_for_client(self, cliente_id: str):
         op_res = db.table("oportunidades").select("id").eq("cliente_id", cliente_id).order("criado_em", desc=True).limit(1).execute()

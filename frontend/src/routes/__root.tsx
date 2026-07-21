@@ -16,6 +16,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/core/api";
 import { Bell, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,7 @@ function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState<any[]>([]);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -158,6 +160,11 @@ function RootComponent() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       userId = session.user.id;
+
+      // Chama o backend para garantir que o script de Playwright inicie a raspagem para este usuário
+      api.post('/api/inbox/start', { user_id: userId }).catch(err => {
+        console.error("Erro ao iniciar monitor da caixa de entrada:", err);
+      });
 
       const { data } = await supabase
         .from("mensagens")
@@ -193,6 +200,17 @@ function RootComponent() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'mensagens' },
+        (payload) => {
+          const updatedMsg = payload.new;
+          // Se a mensagem foi marcada como lida, remove ela da lista do sino
+          if (userId && updatedMsg.perfil_id === userId && updatedMsg.lida) {
+            setUnreadMessages((prev) => prev.filter((msg) => msg.id !== updatedMsg.id));
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -213,7 +231,7 @@ function RootComponent() {
               <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl">
                 <SidebarTrigger />
                 <div className="ml-auto flex items-center gap-2">
-                  <Popover>
+                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-foreground">
                         <Bell className="h-5 w-5" />
@@ -250,7 +268,7 @@ function RootComponent() {
                         )}
                       </div>
                       <div className="border-t border-border/50 p-2 text-center">
-                        <Link to="/inbox" className="text-xs font-medium text-primary hover:underline">
+                        <Link to="/inbox" onClick={() => setIsPopoverOpen(false)} className="text-xs font-medium text-primary hover:underline">
                           Ir para Caixa de Entrada
                         </Link>
                       </div>

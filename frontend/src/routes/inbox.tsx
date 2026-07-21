@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, CheckCircle2, MessageSquare, ExternalLink, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -141,9 +141,7 @@ function InboxPage() {
                     </div>
                   )}
 
-                  <p className="text-sm mt-2 leading-relaxed text-foreground/90 whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/30">
-                    {msg.conteudo}
-                  </p>
+                  <ExpandableMessage content={msg.conteudo} />
                 </div>
                 
                 <div className="flex md:flex-col gap-2 shrink-0 md:w-32">
@@ -153,10 +151,17 @@ function InboxPage() {
                     </Button>
                   )}
                   {msg.url_origem && (
-                    <Button variant="secondary" size="sm" className="w-full text-xs" asChild>
+                    <Button variant="secondary" size="sm" className="w-full text-xs" asChild onClick={() => markAsRead(msg.id)}>
                       <a href={msg.url_origem} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-3.5 w-3.5" /> Responder
                       </a>
+                    </Button>
+                  )}
+                  {msg.oportunidade_id && (
+                    <Button variant="secondary" size="sm" className="w-full text-xs" asChild>
+                      <Link to="/oportunidades/$id" params={{ id: msg.oportunidade_id }}>
+                        <ExternalLink className="mr-2 h-3.5 w-3.5" /> Ir para projeto
+                      </Link>
                     </Button>
                   )}
                 </div>
@@ -166,5 +171,26 @@ function InboxPage() {
         </div>
       )}
     </PageContainer>
+  );
+}
+
+function ExpandableMessage({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content && content.length > 35;
+  
+  return (
+    <div className="mt-2 bg-muted/20 p-3 rounded-lg border border-border/30">
+      <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">
+        {expanded || !isLong ? content : content.slice(0, 35) + "..."}
+      </p>
+      {isLong && (
+        <button 
+          onClick={() => setExpanded(!expanded)}
+          className="text-primary/80 hover:text-primary text-xs font-medium mt-1.5 transition-colors"
+        >
+          {expanded ? "Ver menos" : "Expandir"}
+        </button>
+      )}
+    </div>
   );
 }

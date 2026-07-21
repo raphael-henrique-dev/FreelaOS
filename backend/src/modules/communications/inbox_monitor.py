@@ -1,5 +1,7 @@
 import os
 import asyncio
+import html
+import traceback
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 from playwright.async_api import async_playwright
@@ -20,12 +22,13 @@ async def monitor_loop(user_id: str):
     print(f"[*] Iniciando monitor de Inbox para o usuário {user_id}")
     while user_id in active_monitors:
         try:
+            print(f"[{datetime.now().hour}:{datetime.now().minute}:{datetime.now().second}] Verificando mensagens não lidas para {user_id}...")
             await check_unread_messages(user_id)
         except Exception as e:
             print(f"[!] Erro no monitoramento do usuário {user_id}: {e}")
         
         # Espera 5 minutos (300 segundos) antes da próxima varredura para evitar ban
-        await asyncio.sleep(300)
+        await asyncio.sleep(30)
 
 async def check_unread_messages(user_id: str):
     session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "99freelas")
@@ -44,11 +47,9 @@ async def check_unread_messages(user_id: str):
             await page.goto("https://www.99freelas.com.br/messages/unread", timeout=60000)
             await page.wait_for_load_state("domcontentloaded")
             
-            # Localizar itens de mensagem não lida
-            # No 99freelas as mensagens costumam estar em listas ou divs de conversas.
-            # Este seletor tenta capturar elementos genéricos não lidos na interface de mensagens.
-            # Pode requerer ajustes se o HTML da plataforma mudar.
-            unread_locators = page.locator("li.unread, .message-list-item.unread, div.conversation.unread")
+            # Busca estritamente dentro da lista de conversas da página
+            unread_locators = page.locator("ul.menu-list li.conversa-item:not(.model)")
+            await unread_locators.first.wait_for(state="visible", timeout=5000)  # Espera até que pelo menos uma conversa seja visível
             count = await unread_locators.count()
             
             if count == 0:
@@ -58,23 +59,43 @@ async def check_unread_messages(user_id: str):
                 node = unread_locators.nth(i)
                 
                 # Tenta extrair o remetente
-                remetente_loc = node.locator(".author, .name, .user-name, strong").first
-                remetente = await remetente_loc.text_content() if await remetente_loc.count() > 0 else "Desconhecido"
-                remetente = remetente.strip()
+                # O 99Freelas armazena os dados mastigados em inputs hidden (info-conversa-nome-pessoa)
+                # ou na tag .pessoa-name
+                remetente_input = node.locator("input.info-conversa-nome-pessoa").first
+                remetente = await remetente_input.get_attribute("value") if await remetente_input.count() > 0 else ""
+
+                print(f"[DEBUG] Remetente extraído do input: {remetente}")
+
+                if not remetente:
+                    remetente_loc = node.locator(".nome-usuario .text, .pessoa-name, .item-info-pessoa, .sub-title.nome-pessoa, .author, .name, .user-name, strong").first
+                    print(f"[DEBUG] Remetente localizado: {remetente_loc}")
+                    
+                    remetente = await remetente_loc.text_content() if await remetente_loc.count() > 0 else "Desconhecido"
+                
+                # Decodifica HTML entities (ex: Host&aacute;cio -> Hostácio)
+                remetente = html.unescape(remetente).strip()
+
+                print(f"[DEBUG] Remetente extraído: {remetente}")
+                
+                if remetente == "Desconhecido":
+                    html_dump = await node.inner_html()
+                    print(f"[DEBUG-HTML] O HTML desse node é: {html_dump[:200]}...")
                 
                 # Tenta extrair o trecho do texto
                 texto_loc = node.locator(".text, .message-content, .preview, p").first
                 texto = await texto_loc.text_content() if await texto_loc.count() > 0 else "Mensagem sem texto detectado."
-                texto = texto.strip()
+                texto = html.unescape(texto).strip()
+
+                # FILTRO ANTI-FANTASMA
+                if remetente == "Desconhecido" and texto == "Mensagem sem texto detectado.":
+                    continue
                 
-                # Link da conversa para o usuário poder clicar na Inbox e ir pro site
-                url_loc = node.locator("a").first
-                url_origem = await url_loc.get_attribute("href") if await url_loc.count() > 0 else ""
-                if url_origem and not url_origem.startswith("http"):
-                    url_origem = "https://www.99freelas.com.br" + url_origem
+                # Link da conversa (o 99freelas usa o data-id no li)
+                conversa_id = await node.get_attribute("data-id")
+                url_origem = f"https://www.99freelas.com.br/messages/unread/{conversa_id}" if conversa_id else ""
 
                 # 1. EVITAR DUPLICIDADE
-                if msg_repo.check_duplicate(user_id, remetente, url_origem):
+                if msg_repo.check_duplicate(user_id, remetente, url_origem, texto):
                     continue # Já alertamos sobre essa, passa pra próxima
                     
                 # 2. CRUZAMENTO DE DADOS (Busca Cliente)
@@ -91,17 +112,23 @@ async def check_unread_messages(user_id: str):
                         oportunidade_id = msg_repo.get_latest_opportunity_for_client(cliente_id)
 
                 # 3. SALVAR NO BANCO
-                msg_repo.insert_message({
-                    "perfil_id": user_id,
-                    "cliente_id": cliente_id,
-                    "oportunidade_id": oportunidade_id,
-                    "remetente_nome": remetente,
-                    "conteudo": texto,
-                    "url_origem": url_origem,
-                    "lida": False
-                })
-                
-                print(f"[+] Nova mensagem recebida de {remetente} salva com sucesso!")
+                print(f"[DEBUG] Tentando salvar no banco. Tamanho do texto: {len(texto)} caracteres")
+                try:
+                    res = msg_repo.insert_message({
+                        "perfil_id": user_id,
+                        "cliente_id": cliente_id,
+                        "oportunidade_id": oportunidade_id,
+                        "remetente_nome": remetente,
+                        "conteudo": texto,
+                        "url_origem": url_origem,
+                        "lida": False
+                    })
+                    print(f"[+] Nova mensagem recebida de {remetente} salva com sucesso!")
+                    if hasattr(res, 'data') and not res.data:
+                        print(f"[DEBUG] Atenção: O retorno do Supabase parece vazio. Resposta: {res}")
+                except Exception as db_err:
+                    print(f"[!] ERRO ESPECÍFICO AO INSERIR MENSAGEM NO SUPABASE:")
+                    traceback.print_exc()
 
         except Exception as e:
             print(f"[!] Falha durante a extração de mensagens: {e}")
@@ -121,7 +148,8 @@ async def start_monitor(req: StartRequest, background_tasks: BackgroundTasks):
     if req.user_id not in active_monitors:
         active_monitors.add(req.user_id)
         # Joga o loop infinito numa task de background do FastAPI
-        background_tasks.add_task(monitor_loop, req.user_id)
+        # background_tasks.add_task(monitor_loop, req.user_id)
+        asyncio.create_task(monitor_loop(req.user_id))
         return {"status": "started", "message": "Monitor de Inbox ativado."}
     else:
         return {"status": "running", "message": "Monitor já está rodando para este usuário."}
