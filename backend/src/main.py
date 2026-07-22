@@ -1,10 +1,20 @@
 import os
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # Carrega variáveis de ambiente
 load_dotenv()
+
+# Configuração global de Logs para o terminal
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+    datefmt="%H:%M:%S"
+)
+# Libera os logs de nível DEBUG especificamente para o nosso código (evita spam de bibliotecas externas)
+logging.getLogger("backend").setLevel(logging.DEBUG)
 
 # Importa as rotas refatoradas
 from backend.src.modules.opportunities.router import router as opportunities_router
