@@ -45,12 +45,7 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const stats = [
-  { label: "Propostas enviadas", value: dashboardStats.proposals, delta: "+9%", icon: Send },
-  { label: "Taxa de resposta", value: `${dashboardStats.responseRate}%`, delta: "+4pp", icon: PercentSquare },
-  { label: "Projetos fechados", value: dashboardStats.closed, delta: "+2", icon: CheckCircle2 },
-  { label: "Receita do mês", value: currency(dashboardStats.revenue), delta: "+22%", icon: TrendingUp },
-];
+
 
 function Dashboard() {
   const { data: rawOpportunities, isLoading } = useOportunidades();
@@ -91,9 +86,27 @@ function Dashboard() {
     { id: "3", name: "Redator IA", emoji: "✍️", status: "idle", color: "#14b8a6", lastActivity: "Aguardando comando" },
   ];
 
-  // 3. Oportunidades hoje
+  // 4. Calcular métricas dinâmicas reais
+  const umaSemanaAtras = new Date();
+  umaSemanaAtras.setDate(now.getDate() - 7);
+
+  // Oportunidades hoje
   const todayStr = new Date().toLocaleDateString("pt-BR");
   const opsToday = data.filter((op: any) => new Date(op.criado_em).toLocaleDateString("pt-BR") === todayStr).length;
+
+  // Oportunidades na semana
+  const opsWeek = data.filter((op: any) => new Date(op.criado_em) >= umaSemanaAtras).length;
+  
+  // Propostas enviadas na semana (baseado no novo campo data_envio_proposta)
+  const opsEnviadas = data.filter((op: any) => op.status === "Proposta enviada" && op.data_envio_proposta != null);
+  const enviadasSemana = opsEnviadas.filter((op: any) => new Date(op.data_envio_proposta) >= umaSemanaAtras).length;
+
+  const dynamicStats = [
+    { label: "Propostas enviadas (7d)", value: enviadasSemana, delta: "Real", icon: Send },
+    { label: "Taxa de resposta", value: `${dashboardStats.responseRate}%`, delta: "+4pp", icon: PercentSquare },
+    { label: "Projetos fechados", value: dashboardStats.closed, delta: "+2", icon: CheckCircle2 },
+    { label: "Receita do mês", value: currency(dashboardStats.revenue), delta: "+22%", icon: TrendingUp },
+  ];
 
 
   return (
@@ -118,14 +131,14 @@ function Dashboard() {
           <Card className="border-border/60 bg-card/60 backdrop-blur">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Projetos hoje</p>
+                <p className="text-xs text-muted-foreground">Oportunidades esta semana</p>
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="mt-3 text-2xl font-semibold tracking-tight">{opsToday}</p>
+              <p className="mt-3 text-2xl font-semibold tracking-tight">{opsWeek}</p>
               <p className="mt-1 text-[11px] font-medium text-success">+18% vs. semana anterior</p>
             </CardContent>
           </Card>
-          {stats.map((s) => (
+          {dynamicStats.map((s) => (
             <Card key={s.label} className="border-border/60 bg-card/60 backdrop-blur">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -133,7 +146,7 @@ function Dashboard() {
                   <s.icon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <p className="mt-3 text-2xl font-semibold tracking-tight">{s.value}</p>
-                <p className="mt-1 text-[11px] font-medium text-success">{s.delta} vs. semana anterior</p>
+                <p className="mt-1 text-[11px] font-medium text-success">{s.delta === 'Real' ? 'Atualizado agora' : `${s.delta} vs. semana anterior`}</p>
               </CardContent>
             </Card>
           ))}
