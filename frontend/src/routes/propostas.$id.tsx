@@ -120,24 +120,12 @@ function PropostaEditor() {
   async function saveDraft() {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) return;
-      
-      const { error } = await supabase
-        .from("oportunidades")
-        .update({
-          proposta_ia: text,
-          valor_proposta: Number(valor),
-          prazo_proposta: prazo,
-          status: "Rascunho"
-        })
-        .eq("id", op.id)
-        .eq("perfil_id", session.user.id);
-
-      if (error) {
-        console.error("Supabase Error Update Oportunidade:", error);
-        throw error;
-      }
+      await api.patch(`/api/opportunities/${op.id}`, {
+        proposta_ia: text,
+        valor_proposta: valor,
+        prazo_proposta: prazo,
+        status: "Rascunho"
+      });
       
       toast.success("Proposta salva como rascunho (Backlog)");
       // Refaz o fetch dos dados da rota sem piscar a tela

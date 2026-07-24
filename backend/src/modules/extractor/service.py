@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import logging
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 from playwright.sync_api import sync_playwright
@@ -13,6 +14,8 @@ import threading
 import asyncio
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
 # Extractor Service
 repo_op = OpportunityRepository()
 repo_profile = ProfileRepository()
@@ -21,7 +24,7 @@ class ExtractorRequest(BaseModel):
     user_id: str
 
 def executar_extracao(user_id: str):
-    print(f"[EXTRACTOR] Buscando configurações e perfil do usuário {user_id}...")
+    logger.info(f"Buscando configurações e perfil do usuário {user_id}...")
     
     # 1. Pega habilidades, configs e valor minimo
     perfil = repo_profile.get_profile(user_id)
@@ -55,7 +58,7 @@ def executar_extracao(user_id: str):
         page = browser.new_page()
         
         for termo in buscas:
-            print(f"[EXTRACTOR] Varrendo 99Freelas buscando por: {termo}")
+            logger.info(f"Varrendo 99Freelas buscando por: {termo}")
             # Monta a URL de busca dinâmica
             if termo == "desenvolvimento-web":
                 url_alvo = "https://www.99freelas.com.br/projects?categoria=desenvolvimento-web"
@@ -68,12 +71,12 @@ def executar_extracao(user_id: str):
             try:
                 page.wait_for_selector(".result-list", timeout=10000)
             except Exception:
-                print(f"[EXTRACTOR] Nenhuma vaga encontrada para {termo}.")
+                logger.info(f"Nenhuma vaga encontrada para {termo}.")
                 continue
                 
             projetos = page.locator(".result-list .result-item")
             total = projetos.count()
-            print(f"[EXTRACTOR] Encontradas {total} vagas para {termo}.")
+            logger.info(f"Encontradas {total} vagas para {termo}.")
             
             # Varre até as 10 primeiras de cada termo
             for i in range(min(total, 10)):
@@ -86,7 +89,7 @@ def executar_extracao(user_id: str):
                 # Verifica se o usuário desligou o piloto automático no meio da extração
                 check_conf = repo_profile.get_user_settings(user_id)
                 if check_conf and not check_conf.get("piloto_automatico_ativado"):
-                    print("[EXTRACTOR] Piloto Automático foi DESLIGADO pelo usuário. Abortando extração IMEDIATAMENTE.")
+                    logger.warning("Piloto Automático foi DESLIGADO pelo usuário. Abortando extração IMEDIATAMENTE.")
                     return
 
                 titulo = link_tag.inner_text()
@@ -97,7 +100,7 @@ def executar_extracao(user_id: str):
                 res_ops = repo_op.get_opportunities(user_id)
                 # Verifica se a url_vaga já existe em alguma oportunidade do usuário
                 if any(op.get("url") == url_vaga for op in res_ops):
-                    print(f"[EXTRACTOR] Vaga repetida (pulando): {titulo}")
+                    logger.debug(f"Vaga repetida (pulando): {titulo}")
                     continue
                 
                 # Tenta clicar em "Expandir" para ler o texto todo da vaga
@@ -127,10 +130,10 @@ def executar_extracao(user_id: str):
                 is_exclusivo = any("exclusivo" in f.lower() for f in lista_flags)
                 
                 if ignorar_exclusivos and is_exclusivo:
-                    print(f"[EXTRACTOR] Vaga Exclusiva ignorada (assinante Premium): {titulo}")
+                    logger.info(f"Vaga Exclusiva ignorada (assinante Premium): {titulo}")
                     continue
                 
-                print(f"[EXTRACTOR] Nova vaga identificada! Injetando na pipeline: {titulo}")
+                logger.info(f"Nova vaga identificada! Injetando na pipeline: {titulo}")
                 
                 # 3. Dispara o Scout IA internamente
                 scout_req = VagaBruta(texto=texto_bruto, plataforma="99Freelas", perfil_id=user_id)
@@ -144,52 +147,52 @@ def executar_extracao(user_id: str):
                         repo_op.update_opportunity(vaga_id, {"url": url_vaga})
                         
                         # 4. Dispara o Analista IA internamente
-                        print(f"[EXTRACTOR] Scout terminou. Acionando Analista IA para {vaga_id}...")
+                        logger.debug(f"Scout terminou. Acionando Analista IA para {vaga_id}...")
                         analista_res = AnalistaService.avaliar_oportunidade(vaga_id, user_id)
                         score = analista_res.get("score", 0)
                         
                         # 5. Dispara o Redator IA automaticamente se o score bater a meta E se estiver ativado
                         if automacao_ativada and score >= limite_automacao:
-                            print(f"[EXTRACTOR] Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
+                            logger.info(f"Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
                             # Pausa de 15s antes de chamar outra IA pra não levar block do Gemini
                             time.sleep(15)
                             try:
                                 result_redator = RedatorService.gerar_proposta(vaga_id, user_id)
-                                print(f"[EXTRACTOR] Proposta gerada com sucesso para a vaga {vaga_id}!")
+                                logger.info(f"Proposta gerada com sucesso para a vaga {vaga_id}!")
                                 
                                 # NOVO: INTEGRAÇÃO COM SENDER (Autopilot)
                                 if revisao_humana:
-                                    print(f"[EXTRACTOR] Revisão humana ativada. Vaga mantida em Rascunho.")
+                                    logger.info("Revisão humana ativada. Vaga mantida em Rascunho.")
                                 else:
-                                    print(f"[EXTRACTOR] Revisão humana desligada. Enviando proposta automaticamente!")
+                                    logger.info("Revisão humana desligada. Enviando proposta automaticamente!")
                                     try:
                                         # Executa o Sender numa Thread isolada para não conflitar com o Playwright do Extrator
                                         threading.Thread(target=SenderService.submit_proposta, args=(vaga_id, user_id, result_redator.get("proposta", ""), result_redator.get("valor") or valor_minimo, result_redator.get("prazo", "3 dias"))).start()
                                     except Exception as sender_err:
-                                        print(f"[EXTRACTOR] Erro fatal no Sender: {sender_err}")
+                                        logger.error(f"Erro fatal no Sender: {sender_err}", exc_info=True)
                                     
                             except Exception as redator_err:
-                                print(f"[EXTRACTOR] Erro ao gerar proposta: {redator_err}")
+                                logger.error(f"Erro ao gerar proposta: {redator_err}", exc_info=True)
                         else:
                             if not automacao_ativada:
-                                print(f"[EXTRACTOR] Automação do Redator IA está desligada nas configurações.")
+                                logger.info("Automação do Redator IA está desligada nas configurações.")
                             else:
-                                print(f"[EXTRACTOR] Score {score} abaixo da meta ({limite_automacao}). Ignorando Redator IA.")
-                        print(f"[EXTRACTOR] Ciclo finalizado para a vaga: {titulo}\n")
+                                logger.info(f"Score {score} abaixo da meta ({limite_automacao}). Ignorando Redator IA.")
+                        logger.debug(f"Ciclo finalizado para a vaga: {titulo}\n")
                         
                         # Verifica novamente antes de dormir se o motor foi desligado
                         check_conf_after = repo_profile.get_user_settings(user_id)
                         if check_conf_after and not check_conf_after.get("piloto_automatico_ativado"):
-                            print("[EXTRACTOR] Piloto Automático DESLIGADO. Abortando pausas e saindo.")
+                            logger.warning("Piloto Automático DESLIGADO. Abortando pausas e saindo.")
                             return
                             
                         # Pausa de 15 segundos entre vagas para garantir que o limite gratuito do Gemini (15 RPM) não seja estourado
                         time.sleep(15)
                         
                 except Exception as e:
-                    print(f"[EXTRACTOR] Erro na pipeline da vaga {titulo}: {e}")
+                    logger.error(f"Erro na pipeline da vaga {titulo}: {e}", exc_info=True)
                     
         browser.close()
-        print("[EXTRACTOR] Missão de Extracão Concluída!")
+        logger.info("Missão de Extracão Concluída!")
 
 # Rotas movidas para router.py

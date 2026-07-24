@@ -43,7 +43,7 @@ export function useToggleAutopilot() {
       return newState;
     },
     onSuccess: (newState) => {
-      toast.success(newState ? "Motor Iniciado! O piloto automático vai orquestrar a equipe." : "Motor Desligado. Operação manual.");
+      toast.success(newState ? "Motor Iniciado! O piloto automático vai orquestrar a equipe." : "Motor Desligado. Encerrando tarefas pendentes. Operação manual.");
       queryClient.invalidateQueries({ queryKey: ["autopilot"] });
     },
     onError: () => {
