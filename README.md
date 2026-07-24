@@ -33,12 +33,11 @@ O sistema roda em um **Piloto Automático** configurável, orquestrando 4 agente
 ```bash
 # Na raiz do projeto
 npm install
-npm run dev
+npm run dev:frontend
 ```
 
-### 2. Ligando o Motor de Inteligência Artificial (Backend)
+### 2. Inicinado o back/API
 ```bash
-cd agents
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -47,11 +46,11 @@ pip install -r requirements.txt
 playwright install chromium
 
 # Roda o servidor na porta 8000
-uvicorn main:app --reload
+uvicorn backend.src.main:app --reload
 ```
 
 ### 3. Variáveis de Ambiente
-Você precisará criar um `.env` com as integrações das APIs:
+Você precisará criar um `.env` com as chaves das APIs:
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
@@ -61,3 +60,5 @@ GEMINI_API_KEY=
 
 ## 🔒 Segurança de Sessão
 Por lidar com extração e submissão de dados via Playwright, a sessão do navegador local é preservada na pasta `/playwright_sessions`. O repositório já está configurado para **ignorar** esta pasta e proteger suas credenciais. Nunca versione estes arquivos.
+
+## (EM DESENVOLVIMENTO) ##
