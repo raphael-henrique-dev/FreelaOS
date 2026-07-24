@@ -122,7 +122,7 @@ function PropostaEditor() {
     try {
       await api.patch(`/api/opportunities/${op.id}`, {
         proposta_ia: text,
-        valor_proposta: valor,
+        valor_proposta: Number(valor),
         prazo_proposta: prazo,
         status: "Rascunho"
       });

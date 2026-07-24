@@ -1,8 +1,36 @@
 from fastapi import APIRouter, HTTPException
-from backend.src.modules.communications.schemas import SubmitRequest
+from backend.src.modules.communications.schemas import SubmitRequest, MessageUpdate
 from backend.src.modules.communications.service import SenderService
+from backend.src.modules.communications.repository import MessageRepository
+
+repo = MessageRepository()
 
 router = APIRouter()
+
+@router.delete("/api/communications/messages/all")
+def delete_all_messages(user_id: str):
+    try:
+        repo.delete_all_messages(user_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/api/communications/messages/all/read")
+def mark_all_as_read(user_id: str):
+    try:
+        repo.mark_all_as_read(user_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.patch("/api/communications/messages/{message_id}")
+def update_message(message_id: str, req: MessageUpdate):
+    try:
+        data = req.model_dump(exclude_unset=True)
+        repo.update_message(message_id, data)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/sender/submit")
 def submit_proposta(req: SubmitRequest):

@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { currency } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/core/api";
 
 export const Route = createFileRoute("/projetos")({
   head: () => ({ meta: [{ title: "Projetos · FreelaOS" }] }),
@@ -85,6 +88,42 @@ function ProjetosPage() {
     fetchProjects();
   }, []);
 
+  const handleDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+    if (destination.droppableId === "backlog") return; // Regra: Não pode mover para backlog manualmente
+
+    // Encontra o projeto
+    const project = projects.find(p => p.id === draggableId);
+    if (!project) return;
+
+    // Atualiza otimisticamente a UI
+    const newProjects = Array.from(projects);
+    const index = newProjects.findIndex(p => p.id === draggableId);
+    newProjects[index].columnId = destination.droppableId as KanbanColumn;
+    setProjects(newProjects);
+
+    // Mapeia a coluna de destino para o Status correspondente no DB
+    let novoStatus = "";
+    if (destination.droppableId === "aguardando") novoStatus = "Proposta enviada";
+    else if (destination.droppableId === "andamento") novoStatus = "Em andamento";
+    else if (destination.droppableId === "concluido") novoStatus = "Concluído";
+
+    try {
+      await api.patch(`/api/opportunities/${draggableId}`, {
+        status: novoStatus
+      });
+      toast.success(`Projeto movido para ${novoStatus}!`);
+    } catch (e: any) {
+      toast.error("Erro ao mover o projeto.");
+      // Reverte a alteração visual
+      newProjects[index].columnId = source.droppableId as KanbanColumn;
+      setProjects([...newProjects]);
+    }
+  };
+
   return (
     <PageContainer>
       <PageHeader title="Projetos" description="Kanban dos projetos ativos e do pipeline." />
@@ -95,59 +134,84 @@ function ProjetosPage() {
           <span>Carregando projetos...</span>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {columns.map((col) => {
-            const items = projects.filter((p) => p.columnId === col.id);
-            return (
-              <div key={col.id} className="flex min-h-[400px] flex-col rounded-2xl border border-border/60 bg-card/40 p-3">
-                <div className="mb-3 flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${col.accent}`} />
-                    <p className="text-sm font-medium">{col.title}</p>
-                  </div>
-                  <span className="rounded-full bg-background/60 px-2 py-0.5 text-xs text-muted-foreground">
-                    {items.length}
-                  </span>
-                </div>
-                <div className="flex-1 space-y-2">
-                  {items.length === 0 && (
-                    <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border/50 text-xs text-muted-foreground/50">
-                      Vazio
-                    </div>
-                  )}
-                  {items.map((p) => (
-                    <Link key={p.id} to="/oportunidades/$id" params={{ id: p.id }} className="block">
-                      <Card
-                        className="cursor-pointer border-border/60 bg-background/60 p-3 transition hover:border-primary/40 hover:bg-muted/30"
-                      >
-                        <p className="text-xs text-muted-foreground">{p.client}</p>
-                        <p className="mt-0.5 text-sm font-medium leading-snug">{p.title}</p>
-                        {p.stack && p.stack.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-1">
-                            {p.stack.slice(0, 3).map((s: string) => (
-                              <Badge key={s} variant="outline" className="border-border/60 bg-transparent text-[10px]">
-                                {s}
-                              </Badge>
-                            ))}
-                            {p.stack.length > 3 && (
-                              <Badge variant="outline" className="border-border/60 bg-transparent text-[10px]">
-                                +{p.stack.length - 3}
-                              </Badge>
-                            )}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {columns.map((col) => {
+              const items = projects.filter((p) => p.columnId === col.id);
+              return (
+                <Droppable key={col.id} droppableId={col.id} isDropDisabled={col.id === "backlog"}>
+                  {(provided, snapshot) => (
+                    <div 
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={`flex min-h-[400px] flex-col rounded-2xl border border-border/60 bg-card/40 p-3 transition-colors ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
+                    >
+                      <div className="mb-3 flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2 w-2 rounded-full ${col.accent}`} />
+                          <p className="text-sm font-medium">{col.title}</p>
+                        </div>
+                        <span className="rounded-full bg-background/60 px-2 py-0.5 text-xs text-muted-foreground">
+                          {items.length}
+                        </span>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        {items.length === 0 && (
+                          <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border/50 text-xs text-muted-foreground/50">
+                            Vazio
                           </div>
                         )}
-                        <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
-                          <span className="text-muted-foreground">{p.deadline}</span>
-                          <span className="font-semibold text-primary/90">{currency(p.value)}</span>
-                        </div>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                        {items.map((p, index) => (
+                          <Draggable key={p.id} draggableId={p.id} index={index} isDragDisabled={p.columnId === "backlog"}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                style={{
+                                  ...provided.draggableProps.style,
+                                  opacity: snapshot.isDragging ? 0.8 : 1,
+                                }}
+                              >
+                                <Link to="/oportunidades/$id" params={{ id: p.id }} className="block">
+                                  <Card
+                                    className={`cursor-pointer border-border/60 bg-background/60 p-3 transition hover:border-primary/40 hover:bg-muted/30 ${snapshot.isDragging ? 'shadow-lg border-primary/50' : ''}`}
+                                  >
+                                    <p className="text-xs text-muted-foreground">{p.client}</p>
+                                    <p className="mt-0.5 text-sm font-medium leading-snug">{p.title}</p>
+                                    {p.stack && p.stack.length > 0 && (
+                                      <div className="mt-3 flex flex-wrap gap-1">
+                                        {p.stack.slice(0, 3).map((s: string) => (
+                                          <Badge key={s} variant="outline" className="border-border/60 bg-transparent text-[10px]">
+                                            {s}
+                                          </Badge>
+                                        ))}
+                                        {p.stack.length > 3 && (
+                                          <Badge variant="outline" className="border-border/60 bg-transparent text-[10px]">
+                                            +{p.stack.length - 3}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+                                      <span className="text-muted-foreground">{p.deadline}</span>
+                                      <span className="font-semibold text-primary/90">{currency(p.value)}</span>
+                                    </div>
+                                  </Card>
+                                </Link>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    </div>
+                  )}
+                </Droppable>
+              );
+            })}
+          </div>
+        </DragDropContext>
       )}
     </PageContainer>
   );
