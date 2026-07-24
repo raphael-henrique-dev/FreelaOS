@@ -1,6 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 import asyncio
+import logging
 
 from backend.src.modules.extractor.service import executar_extracao
 from backend.src.modules.opportunities.repository import ProfileRepository
@@ -8,6 +9,7 @@ from backend.src.modules.opportunities.repository import ProfileRepository
 repo_profile = ProfileRepository()
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class ExtractorRequest(BaseModel):
     user_id: str
@@ -20,16 +22,16 @@ async def autopilot_loop(user_id: str, interval_hours: int = 3):
         try:
             conf_res = repo_profile.get_user_settings(user_id)
             if conf_res and conf_res.get("piloto_automatico_ativado"):
-                print(f"\n[AUTOPILOT LOOP] Iniciando ciclo programado para {user_id}")
+                logger.info(f"Iniciando ciclo programado (Autopilot) para {user_id}")
                 await asyncio.to_thread(executar_extracao, user_id)
             else:
-                print(f"[AUTOPILOT LOOP] Desativado no banco para {user_id}. Parando o loop.")
+                logger.info(f"Autopilot desativado no banco para {user_id}. Parando o loop.")
                 active_autopilots.remove(user_id)
                 break
         except Exception as e:
-            print(f"[AUTOPILOT LOOP] Erro no loop principal: {e}")
+            logger.error(f"Erro no loop principal do Autopilot: {e}", exc_info=True)
         
-        print(f"[AUTOPILOT LOOP] Aguardando {interval_hours} hora(s) para o próximo ciclo...")
+        logger.debug(f"Autopilot aguardando {interval_hours} hora(s) para o próximo ciclo...")
         await asyncio.sleep(interval_seconds)
 
 @router.post("/api/extractor/run")

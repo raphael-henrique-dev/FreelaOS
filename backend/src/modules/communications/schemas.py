@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class SubmitRequest(BaseModel):
     vaga_id: str
@@ -6,3 +7,6 @@ class SubmitRequest(BaseModel):
     texto: str
     valor: int
     prazo: str
+
+class MessageUpdate(BaseModel):
+    lida: Optional[bool] = None

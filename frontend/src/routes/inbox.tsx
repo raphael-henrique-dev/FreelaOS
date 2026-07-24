@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, CheckCircle2, MessageSquare, ExternalLink, User } from "lucide-react";
+import { Loader2, CheckCircle2, MessageSquare, ExternalLink, User, Trash } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/core/api";
 import { toast } from "sonner";
 
 import { PageContainer, PageHeader } from "@/components/page-header";
@@ -47,15 +48,11 @@ function InboxPage() {
   }, []);
 
   const markAsRead = async (id: string) => {
-    const { error } = await supabase
-      .from("mensagens")
-      .update({ lida: true })
-      .eq("id", id);
-      
-    if (error) {
-      toast.error("Erro ao atualizar status.");
-    } else {
+    try {
+      await api.patch(`/api/communications/messages/${id}`, { lida: true });
       setMessages(messages.map(m => m.id === id ? { ...m, lida: true } : m));
+    } catch (e) {
+      toast.error("Erro ao marcar mensagem como lida.");
     }
   };
 
@@ -63,17 +60,32 @@ function InboxPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     
-    const { error } = await supabase
-      .from("mensagens")
-      .update({ lida: true })
-      .eq("perfil_id", session.user.id)
-      .eq("lida", false);
-
-    if (error) {
-      toast.error("Erro ao atualizar mensagens.");
-    } else {
+    try {
+      await api.patch("/api/communications/messages/all/read", null, {
+        params: { user_id: session.user.id }
+      });
       setMessages(messages.map(m => ({ ...m, lida: true })));
       toast.success("Todas as mensagens marcadas como lidas.");
+    } catch (e) {
+      toast.error("Erro ao atualizar mensagens.");
+    }
+  };
+
+  const deleteAllMessages = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const confirmed = window.confirm("Deseja limpar a caixa de entrada?");
+    if (!confirmed) return;
+
+    try {
+      await api.delete("/api/communications/messages/all", {
+        params: { user_id: session.user.id }
+      });
+      setMessages([]);
+      toast.success("Caixa de entrada limpa.");
+    } catch (e) {
+      toast.error("Erro ao limpar caixa de entrada.");
     }
   };
 
@@ -92,6 +104,12 @@ function InboxPage() {
           )
         }
       />
+
+      
+        <Button className= "hover:bg-red-700" variant="outline" size="sm" onClick={deleteAllMessages}>
+          <Trash className="mr-2 h-4 w-4" /> Limpar Caixa de Entrada
+        </Button>
+      
 
       {loading ? (
         <div className="flex h-64 items-center justify-center text-muted-foreground">

@@ -20,3 +20,12 @@ class MessageRepository:
 
     def insert_message(self, data: dict):
         return db.table("mensagens").insert(data).execute()
+
+    def delete_all_messages(self, user_id: str):
+        return db.table("mensagens").delete().eq("perfil_id", user_id).execute()
+
+    def update_message(self, message_id: str, data: dict):
+        return db.table("mensagens").update(data).eq("id", message_id).execute()
+
+    def mark_all_as_read(self, user_id: str):
+        return db.table("mensagens").update({"lida": True}).eq("perfil_id", user_id).eq("lida", False).execute()
