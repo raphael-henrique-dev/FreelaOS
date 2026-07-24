@@ -60,4 +60,6 @@ GEMINI_API_KEY=
 ```
 
 ## 🔒 Segurança de Sessão
-Por lidar com extração e submissão de dados via Playwright, a sessão do navegador local é preservada na pasta `/playwright_sessions`. O repositório já está configurado para **ignorar** esta pasta e proteger suas credenciais. Nunca versione estes arquivos.
+Por lidar com extração e submissão de dados via Playwright, a sessão do navegador local é preservada na pasta `/playwright_sessions`. Nunca versione estes arquivos.
+
+### EM DESENVOLVIMENTO ###
