@@ -44,3 +44,7 @@ class ClientRepository:
     def create_client(self, data: dict):
         return db.table("clientes").insert(data).execute()
 
+    def get_clients(self, perfil_id: str):
+        res = db.table("clientes").select("*, oportunidades(id, titulo, status, valor_proposta)").eq("perfil_id", perfil_id).order("atualizado_em", desc=True).execute()
+        return res.data
+

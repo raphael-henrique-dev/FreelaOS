@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { currency, statusVariant } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/core/api";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({ meta: [{ title: "Clientes · FreelaOS" }] }),
@@ -50,29 +51,20 @@ function ClientesPage() {
         return;
       }
       
-      const { data, error } = await supabase
-        .from("clientes")
-        .select(`
-          *,
-          oportunidades (
-            id,
-            titulo,
-            status,
-            valor_proposta
-          )
-        `)
-        .eq("perfil_id", session.user.id)
-        .order("atualizado_em", { ascending: false });
+      try {
+        const { data } = await api.get("/api/clients", { params: { perfil_id: session.user.id } });
         
-      if (data) {
-        // Status que indicam que uma proposta já foi enviada ou avançou no funil
+        if (!data) {
+          console.warn("Nenhum dado retornado da API de clientes.");
+          return;
+        }
+
         const validStatuses = ["Proposta enviada", "Em negociação", "Proposta aceita", "Projeto fechado", "Finalizado"];
         
         const mapped = data.map((c: any) => {
           const ops = c.oportunidades || [];
           const validOps = ops.filter((o: any) => validStatuses.includes(o.status));
           
-          // O usuário pediu: "a partir do status Proposta enviada, ou seja, tem proposta enviada? se sim, vai pra tela de clientes"
           if (validOps.length === 0) return null;
           
           const totalValue = validOps.reduce((sum: number, o: any) => sum + (o.valor_proposta || 0), 0);
@@ -94,8 +86,11 @@ function ClientesPage() {
         }).filter(Boolean) as ClientData[];
         
         setClients(mapped);
+      } catch (error) {
+        console.error("Erro ao buscar clientes:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     
     fetchClients();

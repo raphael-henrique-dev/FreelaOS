@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/core/api";
 import {
   LayoutDashboard,
   Compass,
@@ -53,26 +54,28 @@ export function AppSidebar() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const { data } = await supabase
-        .from('perfis')
-        .select('nome')
-        .eq('id', user.id)
-        .single();
+      try {
+        const { data } = await api.get('/api/profile', {
+          params: { user_id: user.id }
+        });
         
-      let name = "Usuário";
-      if (data && data.nome) {
-        name = data.nome;
-      } else if (user.user_metadata?.full_name) {
-        name = user.user_metadata.full_name;
-      }
-      
-      setUserName(name);
-      
-      const parts = name.split(" ").filter(Boolean);
-      if (parts.length > 1) {
-        setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
-      } else if (parts.length === 1) {
-        setUserInitials(parts[0].substring(0, 2).toUpperCase());
+        let name = "Usuário";
+        if (data && data.nome) {
+          name = data.nome;
+        } else if (user.user_metadata?.full_name) {
+          name = user.user_metadata.full_name;
+        }
+        
+        setUserName(name);
+        
+        const parts = name.split(" ").filter(Boolean);
+        if (parts.length > 1) {
+          setUserInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
+        } else if (parts.length === 1) {
+          setUserInitials(parts[0].substring(0, 2).toUpperCase());
+        }
+      } catch (error) {
+        console.error("Erro ao carregar perfil:", error);
       }
     }
     loadProfile();

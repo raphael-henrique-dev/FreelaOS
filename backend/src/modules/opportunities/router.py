@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from backend.src.modules.opportunities.schemas import AvaliacaoRequest, RedatorRequest, VagaBruta, OpportunityUpdate
 from backend.src.modules.opportunities.service import AnalistaService, RedatorService, ScoutService
-from backend.src.modules.opportunities.repository import OpportunityRepository
+from backend.src.modules.opportunities.repository import OpportunityRepository, ClientRepository, ProfileRepository
 
 repo = OpportunityRepository()
 
@@ -70,5 +70,25 @@ def delete_opportunity(vaga_id: str):
     try:
         repo.delete_opportunity(vaga_id)
         return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/clients")
+def list_clients(perfil_id: str):
+    try:
+        return ClientRepository().get_clients(perfil_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/profile")
+def get_profile(user_id: str):
+    try:
+        profile = ProfileRepository().get_profile(user_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="Perfil não encontrado")
+        return profile
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
