@@ -93,9 +93,12 @@ class RedatorService:
         conf_user = profile_repo.get_user_settings(user_id)
         modelo_ativo = "padrao"
         personalizado_prompt = ""
+        github_resumo = ""
 
-        if conf_user and conf_user.get("modelos_proposta"):
-            mod = conf_user["modelos_proposta"]
+        if conf_user:
+            github_resumo = conf_user.get("github_resumo", "")
+            if conf_user.get("modelos_proposta"):
+                mod = conf_user["modelos_proposta"]
             if isinstance(mod, dict):
                 modelo_ativo = mod.get("ativo", "padrao")
                 personalizado_prompt = mod.get("personalizado_prompt", "")
@@ -110,6 +113,7 @@ Nome/Identificação: {perfil.get('nome', 'Profissional')}
 Bio/Resumo: {perfil.get('bio', 'Não informado')}
 Habilidades: {', '.join(perfil.get('habilidades', []))}
 Nível de Experiência: {perfil.get('senioridade', 'Não informado')}
+{f'Análise do Portfólio (GitHub): {github_resumo}' if github_resumo else ''}
 
 [DADOS DA VAGA]
 Título: {vaga.get('titulo')}

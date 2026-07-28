@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useQueryClient } from "@tanstack/react-query";
 import { PageContainer, PageHeader } from "@/components/page-header";
 
 import { useConfiguracoesData, useSaveConfiguracoes, defaultIntegrations } from "@/queries/configuracoes";
@@ -55,6 +56,7 @@ function ConfigPageWrapper() {
 }
 
 function ConfigPage({ initialData }: { initialData: any }) {
+  const queryClient = useQueryClient();
   const { mutateAsync: saveConfig, isPending: saving } = useSaveConfiguracoes();
 
   const userId = initialData.user.id;
@@ -111,6 +113,66 @@ function ConfigPage({ initialData }: { initialData: any }) {
 
   const [connecting99, setConnecting99] = useState(false);
   const [isConnected99, setIsConnected99] = useState(initialData.isConnected99);
+  const [syncingGithub, setSyncingGithub] = useState(false);
+
+  // Check if Github is connected by looking at auth identities
+  const [isGithubConnected, setIsGithubConnected] = useState(false);
+  
+  useState(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.identities) {
+        setIsGithubConnected(data.user.identities.some(id => id.provider === 'github'));
+      }
+    });
+  });
+
+  const handleConnectGithub = async () => {
+    const { error } = await supabase.auth.linkIdentity({ provider: 'github' });
+    if (error) {
+      // Caso a conta já tenha sido vinculada ou seja a conta principal de login
+      if (error.message.includes("identity is already linked")) {
+         toast.success("GitHub já está conectado!");
+         setIsGithubConnected(true);
+      } else {
+         // Fallback se linkIdentity falhar por não suportar
+         const { error: err2 } = await supabase.auth.signInWithOAuth({ 
+           provider: 'github',
+           options: {
+             redirectTo: window.location.origin + '/configuracoes',
+             scopes: 'repo read:user'
+           }
+         });
+         if (err2) toast.error("Erro ao conectar com GitHub.");
+      }
+    }
+  };
+
+  const handleSyncGithub = async () => {
+    setSyncingGithub(true);
+    toast.info("Lendo seus repositórios no GitHub...", { duration: 5000 });
+    
+    try {
+      // Pega a sessão atual para pegar o provider_token, se existir
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = session?.provider_token;
+      
+      const res = await api.post("/api/auth/github/sync", { 
+        user_id: userId,
+        provider_token: providerToken 
+      });
+      
+      if (res.data && res.data.status === "success") {
+        toast.success("Portfólio sincronizado com sucesso!");
+        queryClient.invalidateQueries({ queryKey: ["configuracoes"] });
+      } else {
+        toast.error(res.data?.message || "Erro ao sincronizar repositórios.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || err.message || "Falha ao sincronizar com o backend.");
+    } finally {
+      setSyncingGithub(false);
+    }
+  };
 
   const handleSave = async () => {
     const integracoesJson = integracoes.reduce((acc, curr) => ({ ...acc, [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive } }), {});
@@ -288,9 +350,51 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 <option value="Especialista">Especialista</option>
               </select>
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" size="sm" className="w-full"><Github className="mr-2 h-4 w-4" /> Conectar GitHub</Button>
-              <Button variant="outline" size="sm" className="w-full"><Linkedin className="mr-2 h-4 w-4" /> Conectar LinkedIn</Button>
+            <div className="flex flex-col gap-2 pt-2">
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  * As integrações com o GitHub e o Linkedin alimentam a base de dados com suas informações técnicas e profissionais, fornecendo aos modelos de inteligência maior repertório para elaborar propostas.
+                </p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={`w-full ${isGithubConnected ? 'border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700' : ''}`}
+                  onClick={handleConnectGithub}
+                  disabled={isGithubConnected}
+                >
+                  <Github className="mr-2 h-4 w-4" /> 
+                  {isGithubConnected ? "GitHub Conectado" : "Conectar GitHub"}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full"><Linkedin className="mr-2 h-4 w-4" /> Conectar LinkedIn</Button>
+              </div>
+              
+              {isGithubConnected && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="w-full text-xs" 
+                    onClick={handleSyncGithub}
+                    disabled={syncingGithub}
+                  >
+                    {syncingGithub ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Sparkles className="mr-2 h-3 w-3 text-primary" />}
+                    {syncingGithub ? "Sincronizando..." : "Sincronizar Repositórios (IA)"}
+                  </Button>
+                  <div className="w-full"></div>
+                </div>
+              )}
+
+              {config.github_resumo && (
+                <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2 mb-1 text-primary">
+                    <Github className="h-3 w-3" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Seu Perfil Segundo a IA</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    {config.github_resumo}
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
