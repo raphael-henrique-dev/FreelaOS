@@ -113,6 +113,10 @@ function ConfigPage({ initialData }: { initialData: any }) {
 
   const [connecting99, setConnecting99] = useState(false);
   const [isConnected99, setIsConnected99] = useState(initialData.isConnected99);
+  
+  const [connectingWorkana, setConnectingWorkana] = useState(false);
+  const [isConnectedWorkana, setIsConnectedWorkana] = useState(initialData.isConnectedWorkana);
+
   const [syncingGithub, setSyncingGithub] = useState(false);
   const [showGithubOptions, setShowGithubOptions] = useState(false);
 
@@ -275,6 +279,41 @@ function ConfigPage({ initialData }: { initialData: any }) {
       if (res.data) {
         toast.success(res.data.message);
         setIsConnected99(false);
+      } else {
+        toast.error(res.data?.message || "Erro desconhecido ao desconectar.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Falha de conexão com a API.");
+    }
+  };
+
+  const handleConnectWorkana = async () => {
+    setConnectingWorkana(true);
+    toast.info("Abrindo navegador... Faça o login na janela que aparecerá.", { duration: 8000 });
+    
+    try {
+      const res = await api.post("/api/auth/workana", { user_id: userId });
+      if (res.data && res.data.status === "success") {
+        toast.success(res.data.message);
+        setIsConnectedWorkana(true);
+      } else {
+        toast.error(res.data?.message || "Erro desconhecido ao conectar.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || err.message || "Falha de conexão com a API.");
+    } finally {
+      setConnectingWorkana(false);
+    }
+  };
+
+  const handleDisconnectWorkana = async () => {
+    if (!confirm("Tem certeza que deseja desconectar a Workana? O robô parará de ler as vagas dessa plataforma.")) return;
+    
+    try {
+      const res = await api.delete("/api/auth/workana", { data: { user_id: userId } });
+      if (res.data) {
+        toast.success(res.data.message);
+        setIsConnectedWorkana(false);
       } else {
         toast.error(res.data?.message || "Erro desconhecido ao desconectar.");
       }
@@ -685,6 +724,37 @@ function ConfigPage({ initialData }: { initialData: any }) {
                         <Button size="sm" variant="outline" onClick={handleConnect99Freelas} disabled={connecting99}>
                           {connecting99 ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
                           {connecting99 ? "Aguardando login..." : "Conectar Conta"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {i.id === "workana" && i.enabled && (
+                  <div className="mt-2 flex flex-col border-t border-border/50 pt-3 space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <p className="text-[12px] text-muted-foreground max-w-[200px]">
+                        Conexão com a plataforma: 
+                      </p>
+                      {isConnectedWorkana ? (
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700">
+                            <span className="mr-2 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Conectado
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={handleDisconnectWorkana}
+                            className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                          >
+                            Desconectar
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={handleConnectWorkana} disabled={connectingWorkana}>
+                          {connectingWorkana ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+                          {connectingWorkana ? "Aguardando login..." : "Conectar Conta"}
                         </Button>
                       )}
                     </div>

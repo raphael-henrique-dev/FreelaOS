@@ -56,11 +56,23 @@ export function useConfiguracoesData() {
         console.error("Erro ao checar status do 99freelas:", e);
       }
 
+      // Verifica status da conexão na Workana
+      let isConnectedWorkana = false;
+      try {
+        const authRes = await api.get(`/api/auth/workana/status?user_id=${user.id}`);
+        if (authRes.data) {
+          isConnectedWorkana = authRes.data.connected;
+        }
+      } catch (e) {
+        console.error("Erro ao checar status da workana:", e);
+      }
+
       return {
         user,
         perfil,
         config,
         isConnected99,
+        isConnectedWorkana,
       };
     },
   });

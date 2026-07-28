@@ -74,6 +74,75 @@ class AuthService:
             return False
 
     @staticmethod
+    def conectar_workana(user_id: str) -> bool:
+        session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "workana")
+        os.makedirs(session_dir, exist_ok=True)
+        
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch_persistent_context(
+                    user_data_dir=session_dir,
+                    headless=False,
+                    viewport={"width": 1280, "height": 720},
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+                page = browser.new_page()
+                page.goto("https://www.workana.com/login")
+                
+                try:
+                    for _ in range(120):
+                        # Se saiu da pagina de login, assumimos sucesso
+                        if "login" not in page.url:
+                            break
+                        page.wait_for_timeout(1000)
+                    else:
+                        raise Exception("Timeout")
+                    
+                    page.wait_for_timeout(3000)
+                    success = True
+                except Exception:
+                    success = False
+                
+                browser.close()
+                return success
+        except Exception as e:
+            raise ValueError(str(e))
+
+    @staticmethod
+    def desconectar_workana(user_id: str):
+        session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "workana")
+        if os.path.exists(session_dir):
+            try:
+                shutil.rmtree(session_dir)
+            except Exception as e:
+                raise ValueError(f"Não foi possível remover a pasta da sessão: {str(e)}")
+
+    @staticmethod
+    def status_workana(user_id: str) -> bool:
+        session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "workana")
+        
+        if not os.path.exists(session_dir):
+            return False
+            
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch_persistent_context(
+                    user_data_dir=session_dir,
+                    headless=True,
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+                page = browser.new_page()
+                # Workana dashboard URL ou jobs URL
+                page.goto("https://www.workana.com/jobs", timeout=30000)
+                
+                # Se pedir login, vai pra /login. Se ficar no /jobs ou outro canto, tá logado.
+                success = "login" not in page.url
+                browser.close()
+                return success
+        except Exception:
+            return False
+
+    @staticmethod
     def sync_github_portfolio(user_id: str, provider_token: str | None) -> bool:
         if not provider_token:
             raise ValueError("Token do GitHub não fornecido. Faça login novamente para renovar o token.")
