@@ -29,6 +29,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
+import icone from '/home/raphael/projetos_node/FreelaOS/frontend/assets/icon.png';
+
 const nav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, exact: true },
   { title: "Oportunidades", url: "/oportunidades", icon: Compass },
@@ -92,8 +94,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2.5 px-2 py-2">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-primary shadow-glow">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg">
+            <Link to="/">
+              <img src={icone} alt="icone freelaos" width="24" height="24"/>
+            </Link>
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="truncate text-sm font-semibold tracking-tight">FreelaOS</p>

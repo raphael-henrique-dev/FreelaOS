@@ -6,8 +6,6 @@ import { toast } from "sonner";
 export const defaultIntegrations = [
   { id: "99freelas", name: "99Freelas", desc: "Sincronize propostas e mensagens", enabled: false, ignoreExclusive: true },
   { id: "workana", name: "Workana", desc: "Coleta automática de projetos", enabled: false },
-  { id: "github", name: "GitHub", desc: "Vincule portfólio e repositórios", enabled: false },
-  { id: "linkedin", name: "LinkedIn", desc: "Sync de experiência profissional", enabled: false },
   { id: "openai", name: "OpenAI", desc: "Motor padrão dos agentes", enabled: false },
   { id: "claude", name: "Claude", desc: "Motor alternativo para propostas longas", enabled: false },
   { id: "gemini", name: "Google Gemini", desc: "Análise multimodal de briefings", enabled: false },
