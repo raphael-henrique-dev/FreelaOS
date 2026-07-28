@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from backend.src.modules.opportunities.schemas import AvaliacaoRequest, RedatorRequest, VagaBruta, OpportunityUpdate
 from backend.src.modules.opportunities.service import AnalistaService, RedatorService, ScoutService
 from backend.src.modules.opportunities.repository import OpportunityRepository, ClientRepository, ProfileRepository
+from backend.src.modules.opportunities.workana_crawler import WorkanaCrawler
 
 repo = OpportunityRepository()
 
@@ -36,6 +37,16 @@ def analisar_vaga(vaga: VagaBruta):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno do Scout: {str(e)}")
+
+@router.post("/api/crawler/workana")
+def rodar_crawler_workana(user_id: str, limit: int = 3):
+    try:
+        resultados = WorkanaCrawler.executar(user_id, limit)
+        return {"status": "success", "extraidas": len(resultados), "resultados": resultados}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro no crawler: {str(e)}")
 
 @router.get("/api/opportunities")
 def list_opportunities(user_id: str):

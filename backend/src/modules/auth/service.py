@@ -91,8 +91,8 @@ class AuthService:
                 
                 try:
                     for _ in range(120):
-                        # Se saiu da pagina de login, assumimos sucesso
-                        if "login" not in page.url:
+                        # Se caiu na página de dashboard, assumimos sucesso
+                        if "dashboard" in page.url:
                             break
                         page.wait_for_timeout(1000)
                     else:

@@ -8,6 +8,7 @@ export const defaultIntegrations = [
   { id: "workana", name: "Workana", desc: "Coleta automática de projetos", enabled: false },
   { id: "openai", name: "OpenAI", desc: "Motor padrão dos agentes", enabled: false },
   { id: "claude", name: "Claude", desc: "Motor alternativo para propostas longas", enabled: false },
+  { id: "groq", name: "Groq (Llama-3 70B)", desc: "Motor alternativo do Groq. Rápido, Eficiente e Gratuito.", enabled: false },
   { id: "gemini", name: "Google Gemini", desc: "Análise multimodal de briefings", enabled: false },
 ];
 
