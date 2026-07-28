@@ -114,6 +114,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
   const [connecting99, setConnecting99] = useState(false);
   const [isConnected99, setIsConnected99] = useState(initialData.isConnected99);
   const [syncingGithub, setSyncingGithub] = useState(false);
+  const [showGithubOptions, setShowGithubOptions] = useState(false);
 
   // Check if Github is connected by looking at auth identities
   const [isGithubConnected, setIsGithubConnected] = useState(false);
@@ -144,6 +145,39 @@ function ConfigPage({ initialData }: { initialData: any }) {
          });
          if (err2) toast.error("Erro ao conectar com GitHub.");
       }
+    }
+  };
+
+  const handleDisconnectGithub = async () => {
+    setShowGithubOptions(false);
+    if (!confirm("Tem certeza que deseja desconectar o GitHub? O Redator IA não usará mais seus repositórios.")) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não encontrado.");
+      
+      const identity = user.identities?.find(id => id.provider === 'github');
+      
+      if (identity) {
+        const { error } = await supabase.auth.unlinkIdentity(identity);
+        if (error) {
+           toast.error("Erro ao desconectar: " + error.message);
+        } else {
+           // Limpa o resumo gerado do banco de dados (Kill switch)
+           await supabase
+             .from("configuracoes_usuario")
+             .update({ github_resumo: null })
+             .eq("perfil_id", user.id);
+             
+           toast.success("GitHub desconectado com sucesso!");
+           setIsGithubConnected(false);
+           queryClient.invalidateQueries({ queryKey: ["configuracoes"] });
+        }
+      } else {
+         toast.error("Nenhuma conexão do GitHub encontrada.");
+      }
+    } catch (err: any) {
+      toast.error("Falha ao desconectar.");
     }
   };
 
@@ -355,17 +389,31 @@ function ConfigPage({ initialData }: { initialData: any }) {
                   * As integrações com o GitHub e o Linkedin alimentam a base de dados com suas informações técnicas e profissionais, fornecendo aos modelos de inteligência maior repertório para elaborar propostas.
                 </p>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`w-full ${isGithubConnected ? 'border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700' : ''}`}
-                  onClick={handleConnectGithub}
-                  disabled={isGithubConnected}
-                >
-                  <Github className="mr-2 h-4 w-4" /> 
-                  {isGithubConnected ? "GitHub Conectado" : "Conectar GitHub"}
-                </Button>
-                <Button variant="outline" size="sm" className="w-full"><Linkedin className="mr-2 h-4 w-4" /> Conectar LinkedIn</Button>
+                <div className="relative w-full">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className={`w-full ${isGithubConnected ? 'border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700' : ''}`}
+                    onClick={isGithubConnected ? () => setShowGithubOptions(!showGithubOptions) : handleConnectGithub}
+                  >
+                    <Github className="mr-2 h-4 w-4" /> 
+                    {isGithubConnected ? "GitHub Conectado" : "Conectar GitHub"}
+                  </Button>
+                  
+                  {showGithubOptions && (
+                    <div className="absolute top-full left-0 mt-1 w-full z-10 rounded-md border border-border bg-popover shadow-md outline-none animate-in fade-in zoom-in-95">
+                      <button 
+                        className="w-full relative flex cursor-pointer select-none items-center justify-center rounded-sm px-3 py-2 text-sm text-destructive outline-none hover:bg-destructive/10 transition-colors"
+                        onClick={handleDisconnectGithub}
+                      >
+                        Desconectar
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="w-full">
+                  <Button variant="outline" size="sm" className="w-full"><Linkedin className="mr-2 h-4 w-4" /> Conectar LinkedIn</Button>
+                </div>
               </div>
               
               {isGithubConnected && (
@@ -384,7 +432,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 </div>
               )}
 
-              {config.github_resumo && (
+              {isGithubConnected && config.github_resumo && (
                 <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3 animate-in fade-in slide-in-from-top-2">
                   <div className="flex items-center gap-2 mb-1 text-primary">
                     <Github className="h-3 w-3" />

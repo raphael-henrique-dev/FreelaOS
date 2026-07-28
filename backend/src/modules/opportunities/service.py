@@ -126,10 +126,11 @@ Orçamento: R$ {vaga.get('orcamento')}
 [INSTRUÇÕES GERAIS]
 1. A proposta deve ser formatada em texto claro, com parágrafos curtos.
 2. Seja persuasivo, mas honesto. Não invente habilidades que não estão no perfil do profissional.
-3. Escreva em Português do Brasil de forma natural (evite clichês de IA).
-4. Assine no final com o nome do profissional.
-5. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
-6. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
+3. Se houver correspondência entre a stack exigida na vaga e os projetos mencionados na Análise do Portfólio (GitHub) (se não existir, desconsidere essa instrução), você DEVE citar explicitamente o nome desses projetos e um breve resumo deles na proposta para gerar autoridade imediata.
+4. Escreva em Português do Brasil de forma natural (evite clichês de IA).
+5. Assine no final com o nome do profissional.
+6. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
+7. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
 {{
   "texto_proposta": "Olá! ...",
   "valor": 1500,

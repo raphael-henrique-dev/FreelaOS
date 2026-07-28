@@ -115,7 +115,13 @@ Aqui estão os projetos mais recentes de um desenvolvedor extraídos do seu GitH
 {contexto_github}
 
 Escreva um parágrafo denso, profissional e focado nas habilidades, frameworks e tipos de projetos (backend, frontend, devops, etc.) que este desenvolvedor tem experiência. 
-O objetivo é que este resumo seja usado como 'contexto extra' por outro Agente de IA que escreve propostas para clientes (freelance). Não use saudações. Seja direto e em terceira pessoa."""
+O objetivo é que este resumo seja usado como 'contexto extra' por outro Agente de IA que escreve propostas para clientes (freelance). Não use saudações. Seja direto e em terceira pessoa.
+
+Ao final do texto, faça uma lista contendo: Nome do projeto; Breve Descrição; Tecnologias/Linguagens utilizadas. Por exemplo:
+
+PROJETOS
+- FreelaOS: Sistema centralizado de captação automática de freelas e gestão de projetos com integração de agentes de I.A (React, JavaScript, Python)
+..."""
 
         resumo = generate_text(prompt)
         if not resumo:
