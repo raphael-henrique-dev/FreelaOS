@@ -5,6 +5,10 @@ import json
 from playwright.sync_api import sync_playwright
 from backend.src.core.database import db
 from backend.src.core.llm_client import generate_text
+from backend.src.modules.opportunities.repository import ProfileRepository
+from backend.src.core.llm_client import _get_active_llm
+
+profile_repo = ProfileRepository()
 
 class AuthService:
     @staticmethod
@@ -192,7 +196,8 @@ PROJETOS
 - FreelaOS: Sistema centralizado de captação automática de freelas e gestão de projetos com integração de agentes de I.A (React, JavaScript, Python)
 ..."""
 
-        resumo = generate_text(prompt)
+        active_model = _get_active_llm(user_id)
+        resumo = generate_text(prompt, provedor=active_model)
         if not resumo:
             raise ValueError("Erro ao gerar resumo usando a inteligência artificial.")
             

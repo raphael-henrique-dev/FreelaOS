@@ -245,7 +245,18 @@ function ConfigPage({ initialData }: { initialData: any }) {
   };
 
   function toggleIntegration(id: string, checked: boolean) {
-    setIntegracoes(prev => prev.map(int => int.id === id ? { ...int, enabled: checked } : int));
+    const llmModels = ['openai', 'claude', 'groq', 'gemini'];
+    
+    setIntegracoes(prev => {
+      if (checked && llmModels.includes(id)) {
+        return prev.map(int => {
+          if (int.id === id) return { ...int, enabled: true };
+          if (llmModels.includes(int.id)) return { ...int, enabled: false };
+          return int;
+        });
+      }
+      return prev.map(int => int.id === id ? { ...int, enabled: checked } : int);
+    });
   }
 
   function toggleIgnoreExclusive(id: string, checked: boolean) {

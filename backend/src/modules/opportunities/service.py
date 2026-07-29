@@ -1,5 +1,6 @@
 from backend.src.core.llm_client import generate_json
 from backend.src.modules.opportunities.repository import OpportunityRepository, ProfileRepository, ClientRepository
+from backend.src.core.llm_client import _get_active_llm
 
 opp_repo = OpportunityRepository()
 profile_repo = ProfileRepository()
@@ -50,7 +51,8 @@ class AnalistaService:
         }}
         """
 
-        dados_ia = generate_json(prompt)
+        active_llm = _get_active_llm(user_id)
+        dados_ia = generate_json(prompt, provedor=active_llm)
 
         novo_score = dados_ia.get("SCORE", 0)
         nova_explicacao = dados_ia.get("EXPLICACAO", "Análise não retornou justificativa.")
@@ -137,7 +139,8 @@ Orçamento: R$ {vaga.get('orcamento')}
   "prazo": "7 dias"
 }}
 """
-        dados_ia = generate_json(sys_prompt, force_json=True)
+        active_llm = _get_active_llm(user_id)
+        dados_ia = generate_json(sys_prompt, provedor=active_llm, force_json=True)
         
         texto_proposta = dados_ia.get("texto_proposta", "")
         valor_proposta = dados_ia.get("valor", 0)
@@ -177,7 +180,8 @@ class ScoutService:
         {texto}
         """
 
-        dados_ia = generate_json(prompt, model='gemini-3.1-flash-lite', force_json=True)
+        active_llm = _get_active_llm(perfil_id)
+        dados_ia = generate_json(prompt, provedor=active_llm, force_json=True)
 
         cliente_nome = dados_ia.get("CLIENTE", "Confidencial")
         
