@@ -118,6 +118,7 @@ def executar_extracao(user_id: str):
                         # SENDER
                         if revisao_humana:
                             logger.info("Revisão humana ativada. Vaga mantida em Rascunho.")
+                            repo_op.update_opportunity(vaga_id, {"status": "Rascunho"})
                         else:
                             logger.info("Revisão humana desligada. Enviando proposta automaticamente!")
                             try:

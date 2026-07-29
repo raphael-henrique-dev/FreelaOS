@@ -128,7 +128,8 @@ Orçamento: R$ {vaga.get('orcamento')}
 [INSTRUÇÕES GERAIS]
 1. A proposta deve ser formatada em texto claro, com parágrafos curtos.
 2. Seja persuasivo, mas honesto. Não invente habilidades que não estão no perfil do profissional.
-3. Se houver correspondência entre a stack exigida na vaga e os projetos mencionados na Análise do Portfólio (GitHub) (se não existir, desconsidere essa instrução), você DEVE citar explicitamente o nome desses projetos e um breve resumo deles na proposta para gerar autoridade imediata.
+3. Se houver correspondência entre a stack exigida na vaga e os projetos mencionados na Análise do Portfólio (GitHub) (se não existir, desconsidere essa instrução), você DEVE citar explicitamente o nome desses projetos
+(substitua caracteres de separação '-', '_', '.' por espaços ' '; formate o nome dos projetos em TITLE CASE) e um breve resumo deles na proposta para gerar autoridade imediata.
 4. Escreva em Português do Brasil de forma natural (evite clichês de IA).
 5. Assine no final com o nome do profissional.
 6. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
@@ -139,8 +140,8 @@ Orçamento: R$ {vaga.get('orcamento')}
   "prazo": "7 dias"
 }}
 """
-        active_llm = _get_active_llm(user_id)
-        dados_ia = generate_json(sys_prompt, provedor=active_llm, force_json=True)
+        active_llm = _get_active_llm(user_id)                   ## para o redator o Gemini se mostrou melhor
+        dados_ia = generate_json(sys_prompt, force_json=True)
         
         texto_proposta = dados_ia.get("texto_proposta", "")
         valor_proposta = dados_ia.get("valor", 0)

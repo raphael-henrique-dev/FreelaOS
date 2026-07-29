@@ -21,7 +21,7 @@ class WorkanaCrawler:
             with sync_playwright() as p:
                 browser = p.chromium.launch_persistent_context(
                     user_data_dir=session_dir,
-                    headless=False,
+                    headless=True,
                     args=["--disable-blink-features=AutomationControlled"]
                 )
                 page = browser.new_page()
