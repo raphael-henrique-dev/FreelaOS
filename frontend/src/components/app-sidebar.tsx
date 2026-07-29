@@ -29,7 +29,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-import icone from '/home/raphael/projetos_node/FreelaOS/frontend/assets/icon.png';
+import iconeFreela from "../../assets/icon.png";
 
 const nav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, exact: true },
@@ -96,7 +96,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2.5 px-2 py-2">
           <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg">
             <Link to="/">
-              <img src={icone} alt="icone freelaos" width="24" height="24"/>
+              <img src={iconeFreela} alt="icone freelaos" width="24" height="24"/>
             </Link>
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
