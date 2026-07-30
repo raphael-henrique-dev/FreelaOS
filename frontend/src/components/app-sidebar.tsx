@@ -100,7 +100,7 @@ export function AppSidebar() {
             </Link>
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-semibold tracking-tight">FreelaOS</p>
+            <p className="truncate text-sm font-semibold tracking-tight">Freela<span className="highlight">OS</span></p>
             <p className="truncate text-[11px] text-muted-foreground">Sua equipe de IA</p>
           </div>
         </div>

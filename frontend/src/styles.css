@@ -97,6 +97,14 @@
   --shadow-glow: 0 0 0 1px oklch(0.68 0.19 265 / 20%), 0 8px 32px -8px oklch(0.68 0.19 265 / 35%);
 }
 
+.highlight {
+    background: linear-gradient(135deg, #a78bfa, #38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: bold;
+}
+
+
 @layer base {
   * {
     border-color: var(--color-border);
