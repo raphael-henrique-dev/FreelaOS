@@ -1,60 +1,79 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("waitlist-form");
-    const emailInput = document.getElementById("email");
-    const message = document.getElementById("form-message");
-
-    form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const email = emailInput.value.trim();
-        
-        if (email) {
-            // Mock de envio para API
-            console.log("=== NOVO LEAD CAPTURADO ===");
-            console.log("Email salvo na lista de espera:", email);
-            console.log("===========================");
-
-            // Feedback visual
-            const btn = form.querySelector("button");
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<i data-lucide="check"></i> Salvo!`;
-            lucide.createIcons();
+    const waitlistForm = document.getElementById('waitlist-form');
+    if(waitlistForm) {
+        waitlistForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailInput = waitlistForm.querySelector('input[type="email"]');
+            const submitBtn = waitlistForm.querySelector('button');
+            const message = document.getElementById("form-message");
+            const originalBtnText = submitBtn.innerHTML;
             
-            message.textContent = "Excelente! Você está na lista de espera. Avisaremos em breve.";
-            message.style.color = "#10b981"; // success green
-            
-            emailInput.value = "";
-            
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                lucide.createIcons();
-            }, 3000);
-        }
-    });
+            if(emailInput.value) {
+                submitBtn.innerHTML = '<i data-lucide="loader" class="spin"></i> Processando...';
+                submitBtn.disabled = true;
+                emailInput.disabled = true;
+                
+                try {
+                    const response = await fetch('/api/leads', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: emailInput.value })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if(response.ok) {
+                        submitBtn.innerHTML = '<i data-lucide="check"></i> Garantido!';
+                        submitBtn.style.background = '#10b981';
+                        submitBtn.style.borderColor = '#10b981';
+                        
+                        if(message) {
+                            message.textContent = "Excelente! Você está na lista de espera. Avisaremos em breve.";
+                            message.style.color = "#10b981";
+                        }
+                        
+                        emailInput.value = '';
+                    } else {
+                        throw new Error(data.error || 'Erro ao cadastrar');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    submitBtn.innerHTML = '<i data-lucide="x"></i> Tente novamente';
+                    submitBtn.style.background = '#ef4444';
+                    submitBtn.style.borderColor = '#ef4444';
+                    
+                    setTimeout(() => {
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.style.background = '';
+                        submitBtn.style.borderColor = '';
+                        submitBtn.disabled = false;
+                        emailInput.disabled = false;
+                        if(window.lucide) window.lucide.createIcons();
+                    }, 3000);
+                }
+                
+                if(window.lucide) window.lucide.createIcons();
+            }
+        });
+    }
 
-    // Mockup animado de logs (Hero section)
     const logContainer = document.querySelector('.mockup-log');
     if(logContainer) {
         const logs = [
-            "[Redator] Rascunho finalizado com sucesso.",
-            "[Sender] Enviando proposta para o cliente...",
-            "[Sender] Proposta enviada! Status: Entregue.",
-            "[Scout] Vasculhando novas vagas na Workana...",
-            "[Scout] Nova vaga encontrada: Designer UI/UX",
-            "[Analista] Vaga 93ce85c8-43cb-427e-99b6 ignorada. Motivo: Orçamento baixo."
+            '<span class="log-info">[Scout]</span> Varrendo Workana para vaga "React Developer"',
+            '<span class="log-info">[Scout]</span> Nova vaga encontrada: Vaga #8492',
+            '<span class="log-warning">[Analista]</span> Qualificando vaga #8492... Score: 92/100',
+            '<span class="log-success">[Redator]</span> Proposta gerada com sucesso! (98% match)',
+            '<span class="log-success">[Sender]</span> Proposta enviada para o cliente (Orçamento: R$ 4.500)',
+            '<span class="log-info">[Scout]</span> Analisando 99Freelas... 3 novas vagas'
         ];
         
         let index = 0;
         setInterval(() => {
-            const p = document.createElement("p");
-            p.textContent = logs[index];
-            p.style.opacity = "0";
-            
+            const p = document.createElement('p');
+            p.innerHTML = `> ${logs[index]}`;
             logContainer.appendChild(p);
             
-            // Fade In
-            setTimeout(() => { p.style.opacity = "1"; p.style.transition = "opacity 0.5s"; }, 10);
-            
-            // Remove o primeiro se tiver mais de 5 para não estourar a div
             if(logContainer.children.length > 5) {
                 logContainer.removeChild(logContainer.firstChild);
             }
@@ -63,15 +82,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 1500);
     }
 
-    // Função para Efeito Parallax 3D
     function applyParallax(selector, maxRotation = 8) {
         const elements = document.querySelectorAll(selector);
         
         elements.forEach(el => {
             el.addEventListener('mousemove', (e) => {
                 const rect = el.getBoundingClientRect();
-                const x = e.clientX - rect.left; // x position within the element
-                const y = e.clientY - rect.top;  // y position within the element
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
                 
                 const centerX = rect.width / 2;
                 const centerY = rect.height / 2;
@@ -93,7 +111,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Aplica o Parallax
     applyParallax('.dashboard-hero-wrapper', 8);
     applyParallax('.hero-mockup', 5);
     applyParallax('.waitlist-container', 4);
