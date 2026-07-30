@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Sparkles, Trash2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +98,7 @@ export const Route = createFileRoute("/oportunidades/$id")({
 function OpDetail() {
   const { op, prevId, nextId } = Route.useLoaderData();
   const navigate = useNavigate();
+  const router = useRouter();
   const [loadingParecer, setLoadingParecer] = useState(false);
 
   async function handleGerarParecer() {
@@ -130,10 +131,8 @@ function OpDetail() {
   return (
     <PageContainer>
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/oportunidades">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
-          </Link>
+        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.history.back()}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
         </Button>
         
         <div className="flex items-center gap-2">

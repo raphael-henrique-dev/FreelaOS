@@ -1,5 +1,6 @@
 from backend.src.core.llm_client import generate_json
 from backend.src.modules.opportunities.repository import OpportunityRepository, ProfileRepository, ClientRepository
+from backend.src.core.llm_client import _get_active_llm
 
 opp_repo = OpportunityRepository()
 profile_repo = ProfileRepository()
@@ -50,7 +51,8 @@ class AnalistaService:
         }}
         """
 
-        dados_ia = generate_json(prompt)
+        active_llm = _get_active_llm(user_id)
+        dados_ia = generate_json(prompt, provedor=active_llm)
 
         novo_score = dados_ia.get("SCORE", 0)
         nova_explicacao = dados_ia.get("EXPLICACAO", "Análise não retornou justificativa.")
@@ -93,9 +95,12 @@ class RedatorService:
         conf_user = profile_repo.get_user_settings(user_id)
         modelo_ativo = "padrao"
         personalizado_prompt = ""
+        github_resumo = ""
 
-        if conf_user and conf_user.get("modelos_proposta"):
-            mod = conf_user["modelos_proposta"]
+        if conf_user:
+            github_resumo = conf_user.get("github_resumo", "")
+            if conf_user.get("modelos_proposta"):
+                mod = conf_user["modelos_proposta"]
             if isinstance(mod, dict):
                 modelo_ativo = mod.get("ativo", "padrao")
                 personalizado_prompt = mod.get("personalizado_prompt", "")
@@ -110,6 +115,7 @@ Nome/Identificação: {perfil.get('nome', 'Profissional')}
 Bio/Resumo: {perfil.get('bio', 'Não informado')}
 Habilidades: {', '.join(perfil.get('habilidades', []))}
 Nível de Experiência: {perfil.get('senioridade', 'Não informado')}
+{f'Análise do Portfólio (GitHub): {github_resumo}' if github_resumo else ''}
 
 [DADOS DA VAGA]
 Título: {vaga.get('titulo')}
@@ -122,16 +128,19 @@ Orçamento: R$ {vaga.get('orcamento')}
 [INSTRUÇÕES GERAIS]
 1. A proposta deve ser formatada em texto claro, com parágrafos curtos.
 2. Seja persuasivo, mas honesto. Não invente habilidades que não estão no perfil do profissional.
-3. Escreva em Português do Brasil de forma natural (evite clichês de IA).
-4. Assine no final com o nome do profissional.
-5. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
-6. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
+3. Se houver correspondência entre a stack exigida na vaga e os projetos mencionados na Análise do Portfólio (GitHub) (se não existir, desconsidere essa instrução), você DEVE citar explicitamente o nome desses projetos
+(substitua caracteres de separação '-', '_', '.' por espaços ' '; formate o nome dos projetos em TITLE CASE) e um breve resumo deles na proposta para gerar autoridade imediata.
+4. Escreva em Português do Brasil de forma natural (evite clichês de IA).
+5. Assine no final com o nome do profissional.
+6. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
+7. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
 {{
   "texto_proposta": "Olá! ...",
   "valor": 1500,
   "prazo": "7 dias"
 }}
 """
+        active_llm = _get_active_llm(user_id)                   ## para o redator o Gemini se mostrou melhor
         dados_ia = generate_json(sys_prompt, force_json=True)
         
         texto_proposta = dados_ia.get("texto_proposta", "")
@@ -172,7 +181,8 @@ class ScoutService:
         {texto}
         """
 
-        dados_ia = generate_json(prompt, model='gemini-3.1-flash-lite', force_json=True)
+        active_llm = _get_active_llm(perfil_id)
+        dados_ia = generate_json(prompt, provedor=active_llm, force_json=True)
 
         cliente_nome = dados_ia.get("CLIENTE", "Confidencial")
         

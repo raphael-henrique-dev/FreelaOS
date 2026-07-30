@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useQueryClient } from "@tanstack/react-query";
 import { PageContainer, PageHeader } from "@/components/page-header";
 
 import { useConfiguracoesData, useSaveConfiguracoes, defaultIntegrations } from "@/queries/configuracoes";
@@ -55,6 +56,7 @@ function ConfigPageWrapper() {
 }
 
 function ConfigPage({ initialData }: { initialData: any }) {
+  const queryClient = useQueryClient();
   const { mutateAsync: saveConfig, isPending: saving } = useSaveConfiguracoes();
 
   const userId = initialData.user.id;
@@ -111,6 +113,104 @@ function ConfigPage({ initialData }: { initialData: any }) {
 
   const [connecting99, setConnecting99] = useState(false);
   const [isConnected99, setIsConnected99] = useState(initialData.isConnected99);
+  
+  const [connectingWorkana, setConnectingWorkana] = useState(false);
+  const [isConnectedWorkana, setIsConnectedWorkana] = useState(initialData.isConnectedWorkana);
+
+  const [syncingGithub, setSyncingGithub] = useState(false);
+  const [showGithubOptions, setShowGithubOptions] = useState(false);
+
+  // Check if Github is connected by looking at auth identities
+  const [isGithubConnected, setIsGithubConnected] = useState(false);
+  
+  useState(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.identities) {
+        setIsGithubConnected(data.user.identities.some(id => id.provider === 'github'));
+      }
+    });
+  });
+
+  const handleConnectGithub = async () => {
+    const { error } = await supabase.auth.linkIdentity({ provider: 'github' });
+    if (error) {
+      // Caso a conta já tenha sido vinculada ou seja a conta principal de login
+      if (error.message.includes("identity is already linked")) {
+         toast.success("GitHub já está conectado!");
+         setIsGithubConnected(true);
+      } else {
+         // Fallback se linkIdentity falhar por não suportar
+         const { error: err2 } = await supabase.auth.signInWithOAuth({ 
+           provider: 'github',
+           options: {
+             redirectTo: window.location.origin + '/configuracoes',
+             scopes: 'repo read:user'
+           }
+         });
+         if (err2) toast.error("Erro ao conectar com GitHub.");
+      }
+    }
+  };
+
+  const handleDisconnectGithub = async () => {
+    setShowGithubOptions(false);
+    if (!confirm("Tem certeza que deseja desconectar o GitHub? O Redator IA não usará mais seus repositórios.")) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não encontrado.");
+      
+      const identity = user.identities?.find(id => id.provider === 'github');
+      
+      if (identity) {
+        const { error } = await supabase.auth.unlinkIdentity(identity);
+        if (error) {
+           toast.error("Erro ao desconectar: " + error.message);
+        } else {
+           // Limpa o resumo gerado do banco de dados (Kill switch)
+           await supabase
+             .from("configuracoes_usuario")
+             .update({ github_resumo: null })
+             .eq("perfil_id", user.id);
+             
+           toast.success("GitHub desconectado com sucesso!");
+           setIsGithubConnected(false);
+           queryClient.invalidateQueries({ queryKey: ["configuracoes"] });
+        }
+      } else {
+         toast.error("Nenhuma conexão do GitHub encontrada.");
+      }
+    } catch (err: any) {
+      toast.error("Falha ao desconectar.");
+    }
+  };
+
+  const handleSyncGithub = async () => {
+    setSyncingGithub(true);
+    toast.info("Lendo seus repositórios no GitHub...", { duration: 5000 });
+    
+    try {
+      // Pega a sessão atual para pegar o provider_token, se existir
+      const { data: { session } } = await supabase.auth.getSession();
+      const providerToken = session?.provider_token;
+      
+      const res = await api.post("/api/auth/github/sync", { 
+        user_id: userId,
+        provider_token: providerToken 
+      });
+      
+      if (res.data && res.data.status === "success") {
+        toast.success("Portfólio sincronizado com sucesso!");
+        queryClient.invalidateQueries({ queryKey: ["configuracoes"] });
+      } else {
+        toast.error(res.data?.message || "Erro ao sincronizar repositórios.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || err.message || "Falha ao sincronizar com o backend.");
+    } finally {
+      setSyncingGithub(false);
+    }
+  };
 
   const handleSave = async () => {
     const integracoesJson = integracoes.reduce((acc, curr) => ({ ...acc, [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive } }), {});
@@ -145,7 +245,18 @@ function ConfigPage({ initialData }: { initialData: any }) {
   };
 
   function toggleIntegration(id: string, checked: boolean) {
-    setIntegracoes(prev => prev.map(int => int.id === id ? { ...int, enabled: checked } : int));
+    const llmModels = ['openai', 'claude', 'groq', 'gemini'];
+    
+    setIntegracoes(prev => {
+      if (checked && llmModels.includes(id)) {
+        return prev.map(int => {
+          if (int.id === id) return { ...int, enabled: true };
+          if (llmModels.includes(int.id)) return { ...int, enabled: false };
+          return int;
+        });
+      }
+      return prev.map(int => int.id === id ? { ...int, enabled: checked } : int);
+    });
   }
 
   function toggleIgnoreExclusive(id: string, checked: boolean) {
@@ -179,6 +290,41 @@ function ConfigPage({ initialData }: { initialData: any }) {
       if (res.data) {
         toast.success(res.data.message);
         setIsConnected99(false);
+      } else {
+        toast.error(res.data?.message || "Erro desconhecido ao desconectar.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Falha de conexão com a API.");
+    }
+  };
+
+  const handleConnectWorkana = async () => {
+    setConnectingWorkana(true);
+    toast.info("Abrindo navegador... Faça o login na janela que aparecerá.", { duration: 8000 });
+    
+    try {
+      const res = await api.post("/api/auth/workana", { user_id: userId });
+      if (res.data && res.data.status === "success") {
+        toast.success(res.data.message);
+        setIsConnectedWorkana(true);
+      } else {
+        toast.error(res.data?.message || "Erro desconhecido ao conectar.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || err.message || "Falha de conexão com a API.");
+    } finally {
+      setConnectingWorkana(false);
+    }
+  };
+
+  const handleDisconnectWorkana = async () => {
+    if (!confirm("Tem certeza que deseja desconectar a Workana? O robô parará de ler as vagas dessa plataforma.")) return;
+    
+    try {
+      const res = await api.delete("/api/auth/workana", { data: { user_id: userId } });
+      if (res.data) {
+        toast.success(res.data.message);
+        setIsConnectedWorkana(false);
       } else {
         toast.error(res.data?.message || "Erro desconhecido ao desconectar.");
       }
@@ -288,9 +434,65 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 <option value="Especialista">Especialista</option>
               </select>
             </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" size="sm" className="w-full"><Github className="mr-2 h-4 w-4" /> Conectar GitHub</Button>
-              <Button variant="outline" size="sm" className="w-full"><Linkedin className="mr-2 h-4 w-4" /> Conectar LinkedIn</Button>
+            <div className="flex flex-col gap-2 pt-2">
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  * As integrações com o GitHub e o Linkedin alimentam a base de dados com suas informações técnicas e profissionais, fornecendo aos modelos de inteligência maior repertório para elaborar propostas.
+                </p>
+              <div className="flex gap-2">
+                <div className="relative w-full">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className={`w-full ${isGithubConnected ? 'border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700' : ''}`}
+                    onClick={isGithubConnected ? () => setShowGithubOptions(!showGithubOptions) : handleConnectGithub}
+                  >
+                    <Github className="mr-2 h-4 w-4" /> 
+                    {isGithubConnected ? "GitHub Conectado" : "Conectar GitHub"}
+                  </Button>
+                  
+                  {showGithubOptions && (
+                    <div className="absolute top-full left-0 mt-1 w-full z-10 rounded-md border border-border bg-popover shadow-md outline-none animate-in fade-in zoom-in-95">
+                      <button 
+                        className="w-full relative flex cursor-pointer select-none items-center justify-center rounded-sm px-3 py-2 text-sm text-destructive outline-none hover:bg-destructive/10 transition-colors"
+                        onClick={handleDisconnectGithub}
+                      >
+                        Desconectar
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="w-full">
+                  <Button variant="outline" size="sm" className="w-full"><Linkedin className="mr-2 h-4 w-4" /> Conectar LinkedIn</Button>
+                </div>
+              </div>
+              
+              {isGithubConnected && (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="w-full text-xs" 
+                    onClick={handleSyncGithub}
+                    disabled={syncingGithub}
+                  >
+                    {syncingGithub ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Sparkles className="mr-2 h-3 w-3 text-primary" />}
+                    {syncingGithub ? "Sincronizando..." : "Sincronizar Repositórios (IA)"}
+                  </Button>
+                  <div className="w-full"></div>
+                </div>
+              )}
+
+              {isGithubConnected && config.github_resumo && (
+                <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 p-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2 mb-1 text-primary">
+                    <Github className="h-3 w-3" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Seu Perfil Segundo a IA</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    {config.github_resumo}
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -533,6 +735,37 @@ function ConfigPage({ initialData }: { initialData: any }) {
                         <Button size="sm" variant="outline" onClick={handleConnect99Freelas} disabled={connecting99}>
                           {connecting99 ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
                           {connecting99 ? "Aguardando login..." : "Conectar Conta"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {i.id === "workana" && i.enabled && (
+                  <div className="mt-2 flex flex-col border-t border-border/50 pt-3 space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <p className="text-[12px] text-muted-foreground max-w-[200px]">
+                        Conexão com a plataforma: 
+                      </p>
+                      {isConnectedWorkana ? (
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="border-green-500/30 bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700">
+                            <span className="mr-2 h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Conectado
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={handleDisconnectWorkana}
+                            className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                          >
+                            Desconectar
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={handleConnectWorkana} disabled={connectingWorkana}>
+                          {connectingWorkana ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+                          {connectingWorkana ? "Aguardando login..." : "Conectar Conta"}
                         </Button>
                       )}
                     </div>

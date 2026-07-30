@@ -6,10 +6,9 @@ import { toast } from "sonner";
 export const defaultIntegrations = [
   { id: "99freelas", name: "99Freelas", desc: "Sincronize propostas e mensagens", enabled: false, ignoreExclusive: true },
   { id: "workana", name: "Workana", desc: "Coleta automática de projetos", enabled: false },
-  { id: "github", name: "GitHub", desc: "Vincule portfólio e repositórios", enabled: false },
-  { id: "linkedin", name: "LinkedIn", desc: "Sync de experiência profissional", enabled: false },
   { id: "openai", name: "OpenAI", desc: "Motor padrão dos agentes", enabled: false },
   { id: "claude", name: "Claude", desc: "Motor alternativo para propostas longas", enabled: false },
+  { id: "groq", name: "Groq (Llama-3 70B)", desc: "Motor alternativo do Groq. Rápido, Eficiente e Gratuito.", enabled: false },
   { id: "gemini", name: "Google Gemini", desc: "Análise multimodal de briefings", enabled: false },
 ];
 
@@ -58,11 +57,23 @@ export function useConfiguracoesData() {
         console.error("Erro ao checar status do 99freelas:", e);
       }
 
+      // Verifica status da conexão na Workana
+      let isConnectedWorkana = false;
+      try {
+        const authRes = await api.get(`/api/auth/workana/status?user_id=${user.id}`);
+        if (authRes.data) {
+          isConnectedWorkana = authRes.data.connected;
+        }
+      } catch (e) {
+        console.error("Erro ao checar status da workana:", e);
+      }
+
       return {
         user,
         perfil,
         config,
         isConnected99,
+        isConnectedWorkana,
       };
     },
   });

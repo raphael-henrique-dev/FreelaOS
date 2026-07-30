@@ -52,3 +52,6 @@ playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/Default
 .wrangler/
 agents/playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/first_party_sets.db
 playwright_sessions/
+
+artifacts
+settings.json

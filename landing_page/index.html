@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landing Page · FreelaOS</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    
+    <header class="navbar">
+        <div class="container nav-content">
+            <div class="logo">
+                <img src="assets/icon.png" alt="FreelaOS Logo" class="logo-icon">
+                <span>Freela<span class="highlight">OS</span></span>
+            </div>
+            <nav class="nav-links">
+                <a href="#solucao">Como Funciona</a>
+                <a href="#agentes">A Equipe</a>
+            </nav>
+            <a href="#waitlist" class="btn-primary-sm">Lista de Espera</a>
+        </div>
+    </header>
+
+    <main>
+        <!-- HERO SECTION -->
+        <section class="hero" id="hero">
+            <div class="container hero-content">
+                <div class="badge-new">Lançamento em Breve</div>
+                <h1 class="hero-title">O primeiro Sistema Operacional feito para <br/>freelancers escalarem com IA.</h1>
+                <p class="hero-subtitle">Pare de perder horas garimpando vagas. Nossa equipe de agentes autônomos encontra, qualifica e escreve propostas perfeitas para os melhores projetos, 24 horas por dia.</p>
+                <div class="hero-cta">
+                    <a href="#waitlist" class="btn-primary">
+                        <i data-lucide="sparkles"></i>
+                        Garantir Acesso Antecipado
+                    </a>
+                </div>
+            </div>
+            
+            <div class="container">
+                <div class="separator-line"></div>
+            </div>
+            
+            <div class="container text-center" style="margin-top: 60px; margin-bottom: 40px;">
+                <h2 class="section-title">100% do controle na sua mão. Seja o "patrão" da sua própria empresa de agentes de I.A</h2>
+                <p class="section-desc" style="margin-bottom: 0;">Tenha acesso rápido e organizado das principais informações relacionadas aos seus projetos e faturamento.</p>
+            </div>
+
+            <div class="dashboard-hero-wrapper">
+                <img src="assets/dashboard-preview.png" alt="FreelaOS Dashboard Preview" class="dashboard-preview-img">
+            </div>
+        </section>
+
+        <!-- DOR / BENEFÍCIOS -->
+        <section class="section problem-section">
+            <div class="container">
+                <div class="grid-2">
+                    <div class="problem-text">
+                        <h2 class="section-title">O Freelancer tradicional gasta 60% do tempo procurando trabalho.</h2>
+                        <p class="section-desc">Ficar atualizando páginas do 99Freelas e Workana o dia todo, enviando propostas genéricas e brigando por preço é o caminho mais rápido para o Burnout.</p>
+                        <ul class="check-list">
+                            <li><i data-lucide="x-circle" class="error-icon"></i> Horas desperdiçadas no "F5"</li>
+                            <li><i data-lucide="x-circle" class="error-icon"></i> Propostas frias que os clientes ignoram</li>
+                            <li><i data-lucide="x-circle" class="error-icon"></i> Cansaço e baixa produtividade</li>
+                        </ul>
+                    </div>
+                    <div class="solution-text glass">
+                        <h3>A Solução FreelaOS <i data-lucide="zap" class="highlight"></i></h3>
+                        <p>Você configura seu perfil, define seu preço mínimo e vai dormir. Nossos agentes de IA vasculham a internet, analisam cada briefing usando modelos de ponta e preparam a abordagem perfeita baseado no que sabem sobre você.</p>
+                        <ul class="check-list">
+                            <li><i data-lucide="check-circle-2" class="success-icon"></i> 100% Autônomo</li>
+                            <li><i data-lucide="check-circle-2" class="success-icon"></i> Propostas Hiper-personalizadas</li>
+                            <li><i data-lucide="check-circle-2" class="success-icon"></i> Seu foco no que importa: Entregar o projeto</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PIPELINE / COMO FUNCIONA -->
+        <section class="section pipeline-section" id="solucao">
+            <div class="container">
+                <div class="text-center">
+                    <h2 class="section-title">Um pipeline completo de vendas.</h2>
+                    <p class="section-desc">Entenda como o FreelaOS trabalha por você nos bastidores.</p>
+                </div>
+                
+                <div class="pipeline-grid">
+                    <div class="pipeline-step glass">
+                        <div class="step-icon">1</div>
+                        <h3>Mapeamento (Scout)</h3>
+                        <p>Varre as principais plataformas e extrai dados brutos de vagas recém publicadas em tempo real.</p>
+                    </div>
+                    <i data-lucide="arrow-right" class="pipeline-arrow hidden-mobile"></i>
+                    <div class="pipeline-step glass">
+                        <div class="step-icon">2</div>
+                        <h3>Qualificação (Analista)</h3>
+                        <p>A IA cruza o briefing com suas habilidades e preferências e gera um Score de 0 a 100 indicando a viabilidade.</p>
+                    </div>
+                    <i data-lucide="arrow-right" class="pipeline-arrow hidden-mobile"></i>
+                    <div class="pipeline-step glass">
+                        <div class="step-icon">3</div>
+                        <h3>Persuasão (Redator)</h3>
+                        <p>Escreve uma proposta sob medida usando ganchos de venda e um tom altamente personalizável.</p>
+                    </div>
+                    <i data-lucide="arrow-right" class="pipeline-arrow hidden-mobile"></i>
+                    <div class="pipeline-step glass highlight-border">
+                        <div class="step-icon">4</div>
+                        <h3>Monitoramento (Sender E Assistente)</h3>
+                        <p>Envia automaticamente (se autorizado) a proposta para o cliente e passa a monitorar mensagens recebidas e andamento do projeto</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TERMINAL DEBAIXO DOS PANOS -->
+        <section class="section terminal-section">
+            <div class="container">
+                <div class="text-center">
+                    <h2 class="section-title">O que acontece debaixo dos panos... 🕵️‍♀️</h2>
+                    <p class="section-desc">Enquanto você foca no que importa, o motor do FreelaOS roda invisível em background executando o pipeline.</p>
+                </div>
+                
+                <div class="hero-mockup glass" style="margin-top: 40px;">
+                    <div class="mockup-header">
+                        <div class="dots">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <div class="mockup-title">freelaos-agent-engine</div>
+                    </div>
+                    <div class="mockup-body">
+                        <!-- <div class="mockup-sidebar">
+                            <div class="nav-item active">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+                                Dashboard
+                            </div>
+                            <div class="nav-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                                Oportunidades
+                            </div>
+                            <div class="nav-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+                                Propostas
+                            </div>
+                        </div> -->
+                        <div class="mockup-main">
+                            <div class="mockup-card">
+                                <h4>Piloto Automático ativado</h4>
+                                <div class="pulse-status">
+                                    <span class="indicator"></span> Motor rodando
+                                </div>
+                                <div class="mockup-log">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AGENTES -->
+        <section class="section agents-section" id="agentes">
+            <div class="container">
+                <h2 class="section-title text-center">Conheça sua nova equipe</h2>
+                <div class="agents-grid">
+                    <div class="agent-card glass">
+                        <div class="agent-avatar">👀</div>
+                        <h4 class="agent-name">Scout IA</h4>
+                        <p class="agent-role">Buscador</p>
+                        <p class="agent-desc">O olho que tudo vê. Lê e extrai centenas de vagas das plataformas em segundos.</p>
+                    </div>
+                    <div class="agent-card glass">
+                        <div class="agent-avatar">🧠</div>
+                        <h4 class="agent-name">Analista IA</h4>
+                        <p class="agent-role">Estrategista</p>
+                        <p class="agent-desc">O cérebro. Define se a vaga vale o seu tempo ou se o cliente está pedindo o impossível.</p>
+                    </div>
+                    <div class="agent-card glass">
+                        <div class="agent-avatar">✍️</div>
+                        <h4 class="agent-name">Redator IA</h4>
+                        <p class="agent-role">Especialista em Conversão</p>
+                        <p class="agent-desc">A lábia. Convence os clientes mais exigentes redigindo propostas profissionais e persuasivas.</p>
+                    </div>
+                    <div class="agent-card glass">
+                        <div class="agent-avatar">🚀</div>
+                        <h4 class="agent-name">Sender IA</h4>
+                        <p class="agent-role">Executor</p>
+                        <p class="agent-desc">O braço mecânico. Submete as propostas aprovadas diretamente na plataforma do cliente em frações de segundo.</p>
+                    </div>
+                    <div class="agent-card glass">
+                        <div class="agent-avatar">🤖</div>
+                        <h4 class="agent-name">Assistente IA</h4>
+                        <p class="agent-role">Oráculo</p>
+                        <p class="agent-desc">O maestro. Gerencia seus prazos, organiza suas tarefas, te aconselha, responde mensagens, analisa seus ganhos. Seu jarvis pessoal.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- WAITLIST / LANÇAMENTO -->
+        <section class="section waitlist-section" id="waitlist">
+            <div class="container waitlist-container glass">
+                <div class="waitlist-content text-center">
+                    <h2 class="section-title">O Lançamento está próximo.</h2>
+                    <p class="section-desc">O FreelaOS está sendo desenvolvido e passará por testes beta privados. Junte-se a outros freelancers e garanta seu lugar na fila.</p>
+                    
+                    <form id="waitlist-form" class="waitlist-form">
+                        <input type="email" id="email" placeholder="Seu melhor e-mail profissional" required class="input-glass">
+                        <button type="submit" class="btn-primary">Entrar na Fila</button>
+                    </form>
+                    <p id="form-message" class="form-message"></p>
+
+                    <div class="social-links">
+                        <p>Ou acompanhe os bastidores:</p>
+                        <div class="social-icons">
+                            <a href="https://www.instagram.com/freela.os/" class="social-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                                Instagram
+                            </a>
+                            <a href="#" class="social-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+                                TikTok
+                            </a>
+                            <a href="#" class="social-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                                X (Twitter)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div class="logo">
+                <img src="assets/icon.png" alt="FreelaOS Logo" class="logo-icon">
+                <span>Freela<span class="highlight">OS</span></span>
+            </div>
+            <p>&copy; 2026 FreelaOS. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
