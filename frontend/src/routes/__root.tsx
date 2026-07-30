@@ -166,6 +166,11 @@ function RootComponent() {
         console.error("Erro ao iniciar monitor da caixa de entrada:", err);
       });
 
+      // Chama o backend para verificar a flag do banco de dados e sincronizar o motor (Scout IA)
+      api.post('/api/autopilot/check', { user_id: userId }).catch(err => {
+        console.error("Erro ao checar status do piloto automático:", err);
+      });
+
       const { data } = await supabase
         .from("mensagens")
         .select("*")
