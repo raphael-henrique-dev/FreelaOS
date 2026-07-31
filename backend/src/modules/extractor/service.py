@@ -145,6 +145,6 @@ def executar_extracao(user_id: str):
         except Exception as e:
             logger.error(f"Erro na pipeline da vaga {titulo}: {e}", exc_info=True)
             
-    logger.info("Missão de Extracão Unificada Concluída!")
+    logger.info("Extração Concluída!")
 
 # Rotas movidas para router.py
