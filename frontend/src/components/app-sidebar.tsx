@@ -42,7 +42,8 @@ const nav = [
 ];
 
 const ai = [
-  { title: "Agentes IA", url: "/agentes", icon: Bot },
+  { title: "Nexus IA", url: "/assistente", icon: Sparkles },
+  { title: "Agentes", url: "/agentes", icon: Bot },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 

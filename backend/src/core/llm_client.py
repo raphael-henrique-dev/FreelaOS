@@ -35,6 +35,15 @@ def _call_provider(prompt: str, provedor: str, force_json: bool = False) -> str:
             response_format={"type": "json_object"} if force_json else None
         )
         return res.choices[0].message.content
+    elif provedor == "gemini-lite":
+        if not _gemini_client: raise ValueError("GEMINI_API_KEY não configurada no ambiente.")
+        config = {'response_mime_type': 'application/json'} if force_json else None
+        res = _gemini_client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=prompt, 
+            config=config
+        )
+        return res.text
         
     else:
         # Default é Gemini

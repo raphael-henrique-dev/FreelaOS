@@ -20,6 +20,7 @@ import { api } from "@/core/api";
 import { Bell, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { AssistantWidget } from "@/components/assistant-widget";
 
 function NotFoundComponent() {
   return (
@@ -225,6 +226,7 @@ function RootComponent() {
 
   const isAuthRoute = pathname === '/login' || pathname === '/onboarding';
   const showUI = isAuthenticated && !isAuthRoute;
+  const isAssistantRoute = pathname === '/assistente';
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -287,6 +289,7 @@ function RootComponent() {
             </main>
           </div>
         </div>
+        {showUI && !isAssistantRoute && <AssistantWidget />}
         <Toaster theme="dark" position="bottom-right" />
       </SidebarProvider>
     </QueryClientProvider>

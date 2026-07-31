@@ -39,6 +39,7 @@ from backend.src.modules.opportunities.router import router as opportunities_rou
 from backend.src.modules.communications.router import router as communications_router
 from backend.src.modules.extractor.router import router as extractor_router
 from backend.src.modules.auth.router import router as auth_router
+from backend.src.modules.assistant.router import router as assistant_router
 
 # O inbox_monitor e extractor antigamente eram disparados por rotas,
 # Precisamos garantir que eles não quebrem.
@@ -68,6 +69,7 @@ app.include_router(opportunities_router)
 app.include_router(communications_router)
 app.include_router(extractor_router)
 app.include_router(auth_router)
+app.include_router(assistant_router)
 
 if inbox_router:
     app.include_router(inbox_router)
