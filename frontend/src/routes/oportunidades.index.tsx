@@ -365,7 +365,7 @@ function OpActions({
 
 function OpTable({ groupItems, handleDelete }: { groupItems: any[], handleDelete: (id: string) => void }) {
   return (
-    <Card className="border-border/60 bg-card/60 overflow-hidden">
+    <Card className="hover:border-border hover:translate-y-0">
       <CardContent className="overflow-x-auto p-0">
         <Table>
           <TableHeader>

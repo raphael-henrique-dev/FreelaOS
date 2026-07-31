@@ -120,7 +120,7 @@ function Dashboard() {
               Sua equipe de IA <span className="text-gradient">produziu {opsToday} {opsToday === 1 ? 'oportunidade' : 'oportunidades'}</span> hoje.
             </h1>
           </div>
-          <Button asChild className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90">
+          <Button asChild className="bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 transition-all duration-300 hover:-translate-y-[5px]">
             <Link to="/oportunidades">
               Ver oportunidades <ArrowUpRight className="ml-1 h-4 w-4" />
             </Link>

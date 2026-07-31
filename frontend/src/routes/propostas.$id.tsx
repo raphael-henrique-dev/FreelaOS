@@ -160,7 +160,7 @@ function PropostaEditor() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <Card className="border-border/60 bg-card/60">
+        <Card className="border-border/60 bg-card/60 hover:border-border hover:translate-y-0">
           <CardContent className="space-y-4 p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
