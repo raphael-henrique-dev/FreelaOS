@@ -53,32 +53,52 @@ def executar_extracao(user_id: str):
     
     vagas_extraidas = []
     
+    from backend.src.core.activity_logger import AgentActivityLogger
+    AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1)
+    
     # 1. Crawler 99Freelas
     try:
         from backend.src.modules.opportunities.freelas99_crawler import Freelas99Crawler
+        AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "99Freelas"})
         logger.info("Iniciando crawler do 99Freelas...")
         vagas_99 = Freelas99Crawler.executar(user_id, buscas, ignorar_exclusivos)
         vagas_extraidas.extend(vagas_99)
     except Exception as e:
         logger.error(f"Erro no crawler do 99Freelas: {e}")
+        AgentActivityLogger.log(user_id, "Scout", f"Erro no crawler do 99Freelas: {str(e)[:100]}", "erro", 1, {"plataforma": "99Freelas"})
 
     # 2. Crawler Workana
     try:
         from backend.src.modules.opportunities.workana_crawler import WorkanaCrawler
+        AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "Workana"})
         logger.info("Iniciando crawler da Workana...")
         vagas_wk = WorkanaCrawler.executar(user_id, buscas, limit=3)
         vagas_extraidas.extend(vagas_wk)
     except Exception as e:
         logger.error(f"Erro no crawler da Workana: {e}")
+        AgentActivityLogger.log(user_id, "Scout", f"Erro no crawler da Workana: {str(e)[:100]}", "erro", 1, {"plataforma": "Workana"})
 
     # 3. Pipeline Unificada de I.A. (Scout -> Analista -> Redator -> Sender)
     res_ops = repo_op.get_opportunities(user_id)
     urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
     
+    novas_vagas = [v for v in vagas_extraidas if v.get("url") not in urls_existentes]
+    total_novas = len(novas_vagas)
+    
+    if total_novas == 0:
+        AgentActivityLogger.log(user_id, "Motor", "Varredura concluída. Nenhuma vaga nova no momento.", "concluido", 4, {"total_vagas": 0})
+        logger.info("Nenhuma vaga nova para processar.")
+        return
+
+    AgentActivityLogger.log(user_id, "Scout", f"Scout identificou {total_novas} nova(s) oportunidade(s)!", "sucesso", 1, {"total_vagas": total_novas})
+
+    vagas_processadas_count = 0
+
     for vaga in vagas_extraidas:
         check_conf = repo_profile.get_user_settings(user_id)
         if check_conf and not check_conf.get("piloto_automatico_ativado"):
             logger.warning("Piloto Automático foi DESLIGADO pelo usuário. Abortando pipeline IMEDIATAMENTE.")
+            AgentActivityLogger.log(user_id, "Motor", "Piloto Automático desativado pelo usuário.", "alerta", 4)
             return
 
         url_vaga = vaga["url"]
@@ -94,33 +114,42 @@ def executar_extracao(user_id: str):
         
         try:
             # SCOUT IA
+            AgentActivityLogger.log(user_id, "Scout", f"Extraindo dados: [{titulo}]", "processando", 1, {"titulo": titulo, "plataforma": plataforma})
             scout_res = ScoutService.analisar_vaga(texto_bruto, plataforma, user_id)
             vaga_id = scout_res.get("vaga_id")
             
             if vaga_id:
                 repo_op.update_opportunity(vaga_id, {"url": url_vaga})
                 urls_existentes.add(url_vaga)
+                vagas_processadas_count += 1
                 
                 # ANALISTA IA
                 logger.debug(f"Scout terminou. Acionando Analista IA para {vaga_id}...")
+                AgentActivityLogger.log(user_id, "Analista", f"Avaliando compatibilidade: [{titulo}]", "processando", 2, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                 analista_res = AnalistaService.avaliar_oportunidade(vaga_id, user_id)
                 score = analista_res.get("score", 0)
+                
+                AgentActivityLogger.log(user_id, "Analista", f"Score de {score}% calculado para [{titulo}]", "sucesso" if score >= limite_automacao else "alerta", 2, {"vaga_id": vaga_id, "score": score, "titulo": titulo, "plataforma": plataforma})
                 
                 # REDATOR IA
                 if automacao_ativada and score >= limite_automacao:
                     logger.info(f"Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
+                    AgentActivityLogger.log(user_id, "Redator", f"Criando proposta sob medida para [{titulo}]...", "processando", 3, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                     time.sleep(15) # Limites do Gemini
                     
                     try:
                         result_redator = RedatorService.gerar_proposta(vaga_id, user_id)
                         logger.info(f"Proposta gerada com sucesso para a vaga {vaga_id}!")
+                        AgentActivityLogger.log(user_id, "Redator", f"Proposta gerada com sucesso para [{titulo}]", "sucesso", 3, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                         
                         # SENDER
                         if revisao_humana:
                             logger.info("Revisão humana ativada. Vaga mantida em Rascunho.")
                             repo_op.update_opportunity(vaga_id, {"status": "Rascunho"})
+                            AgentActivityLogger.log(user_id, "Sender", f"Salvo em Rascunho para sua revisão: [{titulo}]", "sucesso", 4, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                         else:
                             logger.info("Revisão humana desligada. Enviando proposta automaticamente!")
+                            AgentActivityLogger.log(user_id, "Sender", f"Enviando proposta automaticamente para [{titulo}]...", "processando", 4, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                             try:
                                 threading.Thread(
                                     target=SenderService.submit_proposta, 
@@ -128,9 +157,11 @@ def executar_extracao(user_id: str):
                                 ).start()
                             except Exception as sender_err:
                                 logger.error(f"Erro fatal no Sender: {sender_err}", exc_info=True)
+                                AgentActivityLogger.log(user_id, "Sender", f"Erro no envio da proposta: {str(sender_err)[:100]}", "erro", 4, {"vaga_id": vaga_id, "plataforma": plataforma})
                                 
                     except Exception as redator_err:
                         logger.error(f"Erro ao gerar proposta: {redator_err}", exc_info=True)
+                        AgentActivityLogger.log(user_id, "Redator", f"Erro na geração de proposta: {str(redator_err)[:100]}", "erro", 3, {"vaga_id": vaga_id, "plataforma": plataforma})
                 else:
                     if not automacao_ativada:
                         logger.info("Automação do Redator IA está desligada nas configurações.")
@@ -144,7 +175,9 @@ def executar_extracao(user_id: str):
                 
         except Exception as e:
             logger.error(f"Erro na pipeline da vaga {titulo}: {e}", exc_info=True)
+            AgentActivityLogger.log(user_id, "Motor", f"Erro no processamento de '{titulo}': {str(e)[:100]}", "erro", 4)
             
     logger.info("Extração Concluída!")
+    AgentActivityLogger.log(user_id, "Motor", f"Ciclo de extração concluído! ({vagas_processadas_count} vagas processadas)", "concluido", 4, {"total_vagas": vagas_processadas_count})
 
 # Rotas movidas para router.py

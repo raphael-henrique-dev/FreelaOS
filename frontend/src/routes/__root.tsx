@@ -21,6 +21,7 @@ import { Bell, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { AssistantWidget } from "@/components/assistant-widget";
+import { AgentActivityIsland } from "@/components/agent-activity-island";
 
 function NotFoundComponent() {
   return (
@@ -289,6 +290,7 @@ function RootComponent() {
             </main>
           </div>
         </div>
+        {showUI && <AgentActivityIsland />}
         {showUI && !isAssistantRoute && <AssistantWidget />}
         <Toaster theme="dark" position="bottom-right" />
       </SidebarProvider>

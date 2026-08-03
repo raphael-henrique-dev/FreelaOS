@@ -135,7 +135,7 @@ Orçamento: R$ {vaga.get('orcamento')}
 6. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
 7. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
 {{
-  "texto_proposta": "Olá! ...",
+  "texto_proposta": "Olá 'nome do cliente'! ...",
   "valor": 1500,
   "prazo": "7 dias"
 }}
