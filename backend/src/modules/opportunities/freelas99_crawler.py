@@ -10,7 +10,7 @@ class Freelas99Crawler:
     def executar(user_id: str, buscas: list, ignorar_exclusivos: bool, limit_per_term: int = 10):
         resultados = []
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(headless=False)
             page = browser.new_page()
             
             for termo in buscas:

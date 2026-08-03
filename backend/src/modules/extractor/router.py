@@ -44,8 +44,14 @@ def manage_autopilot(user_id: str):
                 loop = asyncio.get_running_loop()
                 loop.create_task(autopilot_loop(user_id, interval_hours=interval))
             except RuntimeError:
-                # Caso não tenha loop na thread atual, podemos tentar via chamada HTTP ou ignorar (não ideal).
-                pass
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.run_coroutine_threadsafe(autopilot_loop(user_id, interval_hours=interval), loop)
+                    else:
+                        loop.create_task(autopilot_loop(user_id, interval_hours=interval))
+                except Exception as e:
+                    logger.error(f"Erro ao agendar autopilot_loop: {e}")
             return {"status": "started", "message": "Autopilot ativado no backend."}
     else:
         if user_id in active_autopilots:
@@ -61,5 +67,5 @@ def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks)
 
 
 @router.post("/api/autopilot/check")
-def check_autopilot(req: ExtractorRequest):
+async def check_autopilot(req: ExtractorRequest):
     return manage_autopilot(req.user_id)
