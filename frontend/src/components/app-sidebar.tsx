@@ -1,7 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/core/api";
+import { performFullLogout } from "@/lib/auth-utils";
+import { toast, Toaster} from 'sonner';
 import {
   LayoutDashboard,
   Compass,
@@ -84,7 +87,11 @@ export function AppSidebar() {
     loadProfile();
   }, []);
 
+  const queryClient = useQueryClient();
+
   const handleLogout = async () => {
+    let confirmacao = confirm('Deseja mesmo sair?')
+    if (!confirmacao) return;
     await supabase.auth.signOut();
   };
 

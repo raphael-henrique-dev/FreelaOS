@@ -134,7 +134,7 @@ def executar_extracao(user_id: str):
                 # REDATOR IA
                 if automacao_ativada and score >= limite_automacao:
                     logger.info(f"Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
-                    AgentActivityLogger.log(user_id, "Redator", f"Criando proposta sob medida para [{titulo}]...", "processando", 3, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
+                    AgentActivityLogger.log(user_id, "Redator", f"Criando proposta sob medida para [{titulo}]...", "processando", 3, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma, score: "score"})
                     time.sleep(15) # Limites do Gemini
                     
                     try:

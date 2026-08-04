@@ -12,6 +12,23 @@ profile_repo = ProfileRepository()
 
 class AuthService:
     @staticmethod
+    def encerrar_sessao_usuario(user_id: str):
+        """Para todas as tarefas e loops em background ativos para o usuário."""
+        try:
+            from backend.src.modules.communications.inbox_monitor import active_monitors
+            if user_id in active_monitors:
+                active_monitors.remove(user_id)
+        except Exception:
+            pass
+
+        try:
+            from backend.src.modules.extractor.router import active_autopilots
+            if user_id in active_autopilots:
+                active_autopilots.remove(user_id)
+        except Exception:
+            pass
+
+    @staticmethod
     def conectar_99freelas(user_id: str) -> bool:
         session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "99freelas")
         os.makedirs(session_dir, exist_ok=True)

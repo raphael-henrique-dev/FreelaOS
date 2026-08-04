@@ -11,6 +11,14 @@ class GithubSyncRequest(BaseModel):
     user_id: str
     provider_token: str | None = None
 
+@router.post("/api/auth/logout")
+def logout_usuario(req: AuthRequest):
+    try:
+        AuthService.encerrar_sessao_usuario(req.user_id)
+        return {"status": "success", "message": "Sessão e tarefas em background encerradas com sucesso."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/api/auth/99freelas")
 def conectar_99freelas(req: AuthRequest):
     try:
