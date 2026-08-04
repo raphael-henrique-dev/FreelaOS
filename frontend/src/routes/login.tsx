@@ -105,6 +105,10 @@ function Login() {
         provider,
         options: {
           redirectTo: `${window.location.origin}/login`,
+          queryParams: provider === 'google' ? {
+            access_type: 'offline',
+            prompt: 'consent',
+          } : undefined,
         },
       })
       if (error) throw error

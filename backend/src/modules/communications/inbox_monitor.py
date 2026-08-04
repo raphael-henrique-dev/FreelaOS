@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from playwright.async_api import async_playwright
 from datetime import datetime
 
+from backend.src.core.browser_manager import BrowserManager
 from backend.src.modules.communications.repository import MessageRepository
 from backend.src.modules.opportunities.repository import ClientRepository
 
@@ -22,17 +23,25 @@ active_monitors = set()
 
 async def monitor_loop(user_id: str):
     logger.info(f"Iniciando monitor de Inbox para o usuário {user_id}")
-    while user_id in active_monitors:
+    while user_id in active_monitors and not BrowserManager.is_cancelled(user_id):
         try:
             logger.debug(f"Verificando mensagens não lidas para {user_id}...")
             await check_unread_messages(user_id)
         except Exception as e:
+            if BrowserManager.is_cancelled(user_id):
+                break
             logger.error(f"Erro no monitoramento do usuário {user_id}: {e}", exc_info=True)
         
-        # Espera 5 minutos (300 segundos) antes da próxima varredura para evitar ban
+        # Espera 30 segundos antes da próxima varredura
         await asyncio.sleep(30)
+    
+    if user_id in active_monitors:
+        active_monitors.discard(user_id)
 
 async def check_unread_messages(user_id: str):
+    if BrowserManager.is_cancelled(user_id):
+        return
+
     session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "99freelas")
     if not os.path.exists(session_dir):
         return # Sem sessão, aguarda até o usuário logar no 99freelas.
@@ -43,9 +52,9 @@ async def check_unread_messages(user_id: str):
             headless=True, # Rodar totalmente invisível em background
             args=["--disable-blink-features=AutomationControlled"]
         )
-        page = await browser.new_page()
-        
+        BrowserManager.register_browser(user_id, browser)
         try:
+            page = await browser.new_page()
             await page.goto("https://www.99freelas.com.br/messages/unread", timeout=60000)
             await page.wait_for_load_state("domcontentloaded")
             
@@ -53,7 +62,7 @@ async def check_unread_messages(user_id: str):
             unread_locators = page.locator("ul.menu-list li.conversa-item:not(.model)")
             try:
                 await unread_locators.first.wait_for(state="visible", timeout=5000)
-            except:
+            except Exception:
                 logger.debug(f"Nenhuma nova mensagem encontrada para o usuário {user_id}.")
                 return
             count = await unread_locators.count()
@@ -136,9 +145,16 @@ async def check_unread_messages(user_id: str):
                     logger.error("Erro específico ao inserir mensagem no Supabase", exc_info=True)
 
         except Exception as e:
+            if BrowserManager.is_cancelled(user_id):
+                logger.info(f"Monitor de Inbox encerrado para {user_id} pelo logout.")
+                return
             logger.error(f"Falha durante a extração de mensagens: {e}", exc_info=True)
         finally:
-            await browser.close()
+            BrowserManager.unregister_browser(user_id, browser)
+            try:
+                await browser.close()
+            except Exception:
+                pass
 
 
 class StartRequest(BaseModel):
@@ -150,10 +166,9 @@ async def start_monitor(req: StartRequest, background_tasks: BackgroundTasks):
     Inicia o loop de monitoramento da Caixa de Entrada.
     O frontend deve chamar essa rota uma vez no login (ou quando o usuário abrir a plataforma).
     """
+    BrowserManager.clear_cancelled(req.user_id)
     if req.user_id not in active_monitors:
         active_monitors.add(req.user_id)
-        # Joga o loop infinito numa task de background do FastAPI
-        # background_tasks.add_task(monitor_loop, req.user_id)
         asyncio.create_task(monitor_loop(req.user_id))
         return {"status": "started", "message": "Monitor de Inbox ativado."}
     else:

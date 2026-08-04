@@ -3,6 +3,7 @@ import os
 import re
 from playwright.sync_api import sync_playwright
 from datetime import datetime
+from backend.src.core.browser_manager import BrowserManager
 from backend.src.modules.auth.service import AuthService
 from backend.src.modules.opportunities.repository import OpportunityRepository
 
@@ -11,6 +12,10 @@ opp_repo = OpportunityRepository()
 class SenderService:
     @staticmethod
     def submit_proposta(vaga_id: str, user_id: str, texto: str, valor: int, prazo: str) -> dict:
+        if BrowserManager.is_cancelled(user_id):
+            logger.info(f"[SENDER] Envio cancelado devido ao logout do usuário {user_id}.")
+            return {"status": "cancelled", "message": "Envio cancelado."}
+
         session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "99freelas")
         
         # Verifica pelo serviço de autenticação para garantir que há tokens/cookies válidos
@@ -29,16 +34,15 @@ class SenderService:
             raise ValueError("URL inválida ou plataforma não suportada para envio automático.")
 
         with sync_playwright() as p:
-            
             browser = p.chromium.launch_persistent_context(
                 user_data_dir=session_dir,
                 headless=False,
                 viewport={"width": 1280, "height": 720},
                 args=["--disable-blink-features=AutomationControlled"]
             )
-            page = browser.new_page()
-            
+            BrowserManager.register_browser(user_id, browser)
             try:
+                page = browser.new_page()
                 page.goto(url_vaga, timeout=60000)
                 
                 # Verifica se a proposta já foi enviada (botão Melhorar Proposta)
@@ -109,7 +113,13 @@ class SenderService:
                 return {"status": "success", "message": "Proposta enviada com sucesso pelo robô!"}
                 
             except Exception as e:
-                browser.close()
+                if BrowserManager.is_cancelled(user_id):
+                    logger.info(f"[SENDER] Envio abortado pelo logout do usuário {user_id}.")
+                    return {"status": "cancelled", "message": "Envio abortado pelo logout."}
                 raise ValueError(f"Envio falhou ou interceptou barreira: {str(e)}")
             finally:
-                browser.close()
+                BrowserManager.unregister_browser(user_id, browser)
+                try:
+                    browser.close()
+                except Exception:
+                    pass

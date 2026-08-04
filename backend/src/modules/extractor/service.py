@@ -17,6 +17,8 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # Extractor Service
+from backend.src.core.browser_manager import BrowserManager
+
 repo_op = OpportunityRepository()
 repo_profile = ProfileRepository()
 
@@ -24,6 +26,10 @@ class ExtractorRequest(BaseModel):
     user_id: str
 
 def executar_extracao(user_id: str):
+    if BrowserManager.is_cancelled(user_id):
+        logger.info(f"Execução de extração cancelada para o usuário {user_id}.")
+        return
+
     logger.info(f"Buscando configurações e perfil do usuário {user_id}...")
     
     perfil = repo_profile.get_profile(user_id)
@@ -57,26 +63,42 @@ def executar_extracao(user_id: str):
     AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1)
     
     # 1. Crawler 99Freelas
-    try:
-        from backend.src.modules.opportunities.freelas99_crawler import Freelas99Crawler
-        AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "99Freelas"})
-        logger.info("Iniciando crawler do 99Freelas...")
-        vagas_99 = Freelas99Crawler.executar(user_id, buscas, ignorar_exclusivos)
-        vagas_extraidas.extend(vagas_99)
-    except Exception as e:
-        logger.error(f"Erro no crawler do 99Freelas: {e}")
-        AgentActivityLogger.log(user_id, "Scout", f"Erro no crawler do 99Freelas: {str(e)[:100]}", "erro", 1, {"plataforma": "99Freelas"})
+    if not BrowserManager.is_cancelled(user_id):
+        try:
+            from backend.src.modules.opportunities.freelas99_crawler import Freelas99Crawler
+            AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "99Freelas"})
+            logger.info("Iniciando crawler do 99Freelas...")
+            vagas_99 = Freelas99Crawler.executar(user_id, buscas, ignorar_exclusivos)
+            vagas_extraidas.extend(vagas_99)
+        except Exception as e:
+            if BrowserManager.is_cancelled(user_id):
+                logger.info(f"Crawler 99Freelas interrompido para {user_id}.")
+                return
+            logger.error(f"Erro no crawler do 99Freelas: {e}")
+            AgentActivityLogger.log(user_id, "Scout", f"Erro no crawler do 99Freelas: {str(e)[:100]}", "erro", 1, {"plataforma": "99Freelas"})
+
+    if BrowserManager.is_cancelled(user_id):
+        logger.info(f"Pipeline abortado após Crawler 99Freelas para {user_id}.")
+        return
 
     # 2. Crawler Workana
-    try:
-        from backend.src.modules.opportunities.workana_crawler import WorkanaCrawler
-        AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "Workana"})
-        logger.info("Iniciando crawler da Workana...")
-        vagas_wk = WorkanaCrawler.executar(user_id, buscas, limit=3)
-        vagas_extraidas.extend(vagas_wk)
-    except Exception as e:
-        logger.error(f"Erro no crawler da Workana: {e}")
-        AgentActivityLogger.log(user_id, "Scout", f"Erro no crawler da Workana: {str(e)[:100]}", "erro", 1, {"plataforma": "Workana"})
+    if not BrowserManager.is_cancelled(user_id):
+        try:
+            from backend.src.modules.opportunities.workana_crawler import WorkanaCrawler
+            AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "Workana"})
+            logger.info("Iniciando crawler da Workana...")
+            vagas_wk = WorkanaCrawler.executar(user_id, buscas, limit=3)
+            vagas_extraidas.extend(vagas_wk)
+        except Exception as e:
+            if BrowserManager.is_cancelled(user_id):
+                logger.info(f"Crawler Workana interrompido para {user_id}.")
+                return
+            logger.error(f"Erro no crawler da Workana: {e}")
+            AgentActivityLogger.log(user_id, "Scout", f"Erro no crawler da Workana: {str(e)[:100]}", "erro", 1, {"plataforma": "Workana"})
+
+    if BrowserManager.is_cancelled(user_id):
+        logger.info(f"Pipeline abortado após Crawler Workana para {user_id}.")
+        return
 
     # 3. Pipeline Unificada de I.A. (Scout -> Analista -> Redator -> Sender)
     res_ops = repo_op.get_opportunities(user_id)
@@ -95,6 +117,10 @@ def executar_extracao(user_id: str):
     vagas_processadas_count = 0
 
     for vaga in vagas_extraidas:
+        if BrowserManager.is_cancelled(user_id):
+            logger.info(f"Cancelamento detectado no loop de vagas para {user_id}.")
+            return
+
         check_conf = repo_profile.get_user_settings(user_id)
         if check_conf and not check_conf.get("piloto_automatico_ativado"):
             logger.warning("Piloto Automático foi DESLIGADO pelo usuário. Abortando pipeline IMEDIATAMENTE.")
@@ -123,6 +149,9 @@ def executar_extracao(user_id: str):
                 urls_existentes.add(url_vaga)
                 vagas_processadas_count += 1
                 
+                if BrowserManager.is_cancelled(user_id):
+                    return
+
                 # ANALISTA IA
                 logger.debug(f"Scout terminou. Acionando Analista IA para {vaga_id}...")
                 AgentActivityLogger.log(user_id, "Analista", f"Avaliando compatibilidade: [{titulo}]", "processando", 2, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
@@ -131,17 +160,26 @@ def executar_extracao(user_id: str):
                 
                 AgentActivityLogger.log(user_id, "Analista", f"Score de {score}% calculado para [{titulo}]", "sucesso" if score >= limite_automacao else "alerta", 2, {"vaga_id": vaga_id, "score": score, "titulo": titulo, "plataforma": plataforma})
                 
+                if BrowserManager.is_cancelled(user_id):
+                    return
+
                 # REDATOR IA
                 if automacao_ativada and score >= limite_automacao:
                     logger.info(f"Score {score} bateu a meta (>={limite_automacao}). Acionando Redator IA em background...")
                     AgentActivityLogger.log(user_id, "Redator", f"Criando proposta sob medida para [{titulo}]...", "processando", 3, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma, score: "score"})
                     time.sleep(15) # Limites do Gemini
                     
+                    if BrowserManager.is_cancelled(user_id):
+                        return
+
                     try:
                         result_redator = RedatorService.gerar_proposta(vaga_id, user_id)
                         logger.info(f"Proposta gerada com sucesso para a vaga {vaga_id}!")
                         AgentActivityLogger.log(user_id, "Redator", f"Proposta gerada com sucesso para [{titulo}]", "sucesso", 3, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                         
+                        if BrowserManager.is_cancelled(user_id):
+                            return
+
                         # SENDER
                         if revisao_humana:
                             logger.info("Revisão humana ativada. Vaga mantida em Rascunho.")

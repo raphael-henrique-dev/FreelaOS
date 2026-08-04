@@ -13,7 +13,10 @@ profile_repo = ProfileRepository()
 class AuthService:
     @staticmethod
     def encerrar_sessao_usuario(user_id: str):
-        """Para todas as tarefas e loops em background ativos para o usuário."""
+        """Para todas as tarefas e loops em background ativos para o usuário e encerra navegadores."""
+        from backend.src.core.browser_manager import BrowserManager
+        BrowserManager.cancel_user(user_id)
+
         try:
             from backend.src.modules.communications.inbox_monitor import active_monitors
             if user_id in active_monitors:

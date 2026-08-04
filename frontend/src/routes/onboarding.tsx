@@ -48,7 +48,7 @@ function Onboarding() {
     try {
       const { error } = await supabase.from('perfis').insert({
         id: user.id,
-        nome: user.user_metadata?.full_name || 'Usuário',
+        nome: user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.user_name || 'Usuário',
         habilidades: skillsArray,
         idiomas: languagesArray,
         senioridade,
