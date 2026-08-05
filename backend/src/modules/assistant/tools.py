@@ -72,26 +72,24 @@ def get_op_infos(vaga_id: str) -> dict:
 def gerar_proposta(vaga_id: str) -> dict:
     """Inicia o agente Redator para criar uma proposta para a vaga_id especificada."""
     try:
-        # Import local para evitar ciclos
-        from backend.src.modules.extractor.service import process_url
         opp = opp_repo.get_opportunity(vaga_id)
         if not opp:
             return {"error": "Vaga não encontrada."}
             
-        if not opp.get("url"):
-            return {"error": "A vaga não possui URL original para o Extrator analisar."}
-            
-        # O process_url do extractor.service orquestra Extrator -> Analista -> Redator
-        result = process_url(opp["url"], opp["perfil_id"])
-        
-        # Após gerar, buscamos novamente pra ver a proposta no banco
-        opp_atualizada = opp_repo.get_opportunity(vaga_id)
+        user_id = opp.get("perfil_id")
+        if not user_id:
+            return {"error": "Vaga sem usuário/perfil associado."}
+
+        from backend.src.modules.opportunities.service import RedatorService
+        result = RedatorService.gerar_proposta(vaga_id, user_id)
         
         return {
             "success": True,
-            "message": "Agentes acionados.",
-            "status": opp_atualizada.get("status"),
-            "proposta_ia": opp_atualizada.get("proposta_ia")
+            "message": "Proposta gerada com sucesso pelo Redator IA.",
+            "status": "Rascunho",
+            "proposta_ia": result.get("proposta"),
+            "valor": result.get("valor"),
+            "prazo": result.get("prazo")
         }
     except Exception as e:
         logger.error(f"Erro em gerar_proposta: {e}")
