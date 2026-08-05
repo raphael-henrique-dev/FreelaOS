@@ -17,7 +17,7 @@ class Freelas99Crawler:
 
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=False)
+                browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
                 BrowserManager.register_browser(user_id, browser)
                 try:
                     page = browser.new_page()
