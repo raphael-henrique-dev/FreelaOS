@@ -91,12 +91,37 @@ class Freelas99Crawler:
                             if ignorar_exclusivos and is_exclusivo:
                                 logger.info(f"[99Freelas] Vaga ignorada (assinatura premium): {titulo}")
                                 continue
+
+                            # Tenta capturar a foto do cliente / autor da vaga
+                            foto_cliente = None
+                            try:
+                                avatar_elem = projeto.locator("img.nnf-with-placeholder, img[src*='cloudfront.net/profile'], img[data-placeholder], .item-autor img, .usuario-avatar img, .avatar img, .author img, img[src*='avatar'], img[src*='usuario'], img[src*='perfil'], img.user-img")
+                                if avatar_elem.count() > 0:
+                                    for idx in range(avatar_elem.count()):
+                                        img_node = avatar_elem.nth(idx)
+                                        src = img_node.get_attribute("src") or img_node.get_attribute("data-src") or img_node.get_attribute("data-original")
+                                        placeholder = img_node.get_attribute("data-placeholder")
+                                        
+                                        if src and not src.startswith("data:") and "blank" not in src:
+                                            # Ignora se for a imagem default / placeholder genérica do 99freelas
+                                            if "default.jpg" in src or (placeholder and src == placeholder):
+                                                continue
+                                            if src.startswith("//"):
+                                                foto_cliente = f"https:{src}"
+                                            elif src.startswith("/"):
+                                                foto_cliente = f"https://www.99freelas.com.br{src}"
+                                            else:
+                                                foto_cliente = src
+                                            break
+                            except Exception as e:
+                                logger.debug(f"[99Freelas] Não foi possível extrair foto do cliente: {e}")
                             
                             resultados.append({
                                 "plataforma": "99Freelas",
                                 "titulo": titulo,
                                 "url": url_vaga,
-                                "texto_bruto": texto_bruto
+                                "texto_bruto": texto_bruto,
+                                "cliente_foto_url": foto_cliente
                             })
                 finally:
                     BrowserManager.unregister_browser(user_id, browser)

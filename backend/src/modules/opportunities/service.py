@@ -162,7 +162,7 @@ Orçamento: R$ {vaga.get('orcamento')}
 
 class ScoutService:
     @staticmethod
-    def analisar_vaga(texto: str, plataforma: str, perfil_id: str) -> dict:
+    def analisar_vaga(texto: str, plataforma: str, perfil_id: str, foto_url: str = None) -> dict:
         prompt = f"""
         Você é o Scout IA, um agente especializado em analisar descrições de vagas para freelancers.
         Leia o texto abaixo e extraia as seguintes informações em formato JSON válido e rigoroso.
@@ -189,18 +189,24 @@ class ScoutService:
         c = client_repo.get_client_by_name(perfil_id, cliente_nome)
         if c:
             cliente_id = c["id"]
+            if foto_url and not c.get("foto_url"):
+                client_repo.update_client(cliente_id, {"foto_url": foto_url})
         else:
-            novo_c = client_repo.create_client({
+            novo_c_payload = {
                 "perfil_id": perfil_id,
                 "nome": cliente_nome,
                 "status": "Ativo"
-            })
+            }
+            if foto_url:
+                novo_c_payload["foto_url"] = foto_url
+            novo_c = client_repo.create_client(novo_c_payload)
             cliente_id = novo_c.data[0]["id"] if novo_c.data else None
 
         registro = {
             "titulo": dados_ia.get("TITULO", "Sem Título"),
             "cliente": cliente_nome,
             "cliente_id": cliente_id,
+            "cliente_foto_url": foto_url,
             "orcamento": dados_ia.get("ORCAMENTO", 0),
             "prazo": dados_ia.get("PRAZO", "Não informado"),
             "stack": dados_ia.get("STACK", []),

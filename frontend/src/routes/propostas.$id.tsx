@@ -14,6 +14,7 @@ import { api } from "@/core/api";
 import { PageContainer } from "@/components/page-header";
 import { currency, statusVariant } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
+import { ClientAvatar } from "@/components/client-avatar";
 
 export const Route = createFileRoute("/propostas/$id")({
   loader: async ({ params }) => {
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/propostas/$id")({
         id: data.id,
         title: data.titulo,
         client: data.clientes?.nome || data.cliente || "Confidencial",
+        clientPhotoUrl: data.clientes?.foto_url || data.cliente_foto_url || null,
         platform: data.plataforma,
         status: data.status,
         description: data.descricao,
@@ -243,7 +245,13 @@ function PropostaEditor() {
           <Card className="border-border/60 bg-card/60">
             <CardContent className="space-y-3 p-5 text-sm">
               <p className="text-xs uppercase tracking-widest text-muted-foreground">Contexto</p>
-              <Row label="Cliente" value={op.client} />
+              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                <span className="text-muted-foreground">Cliente</span>
+                <div className="flex items-center gap-2">
+                  <ClientAvatar nome={op.client} fotoUrl={op.clientPhotoUrl} className="h-6 w-6 text-[10px]" />
+                  <span className="font-medium">{op.client}</span>
+                </div>
+              </div>
               <Row label="Plataforma" value={op.platform} />
               <Row label="Valor" value={currency(op.budget)} />
               <Row label="Prazo" value={op.deadline} />

@@ -26,6 +26,7 @@ import { scoreColor, statusVariant } from "@/lib/mock-data";
 import { toast } from "sonner";
 import { useOportunidades, useDeleteOportunidade } from "@/queries/oportunidades";
 import { useQueryClient } from "@tanstack/react-query";
+import { ClientAvatar } from "@/components/client-avatar";
 
 export const Route = createFileRoute("/oportunidades/")({
   head: () => ({
@@ -64,6 +65,7 @@ function OpListContainer() {
     id: item.id,
     title: item.titulo,
     client: item.clientes?.nome || item.cliente || "Desconhecido",
+    clientPhotoUrl: item.clientes?.foto_url || item.cliente_foto_url || null,
     platform: item.plataforma,
     stack: item.stack || [],
     budget: item.orcamento,
@@ -414,7 +416,12 @@ function OpTable({ groupItems, handleDelete }: { groupItems: any[], handleDelete
                     
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground align-top pt-4">{op.client}</TableCell>
+                <TableCell className="text-muted-foreground align-top pt-4">
+                  <div className="flex items-center gap-2">
+                    <ClientAvatar nome={op.client} fotoUrl={op.clientPhotoUrl} className="h-7 w-7 text-[10px]" />
+                    <span className="truncate max-w-[140px] text-sm">{op.client}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="align-top pt-4">
                   <Badge variant="outline" className="text-xs whitespace-nowrap bg-background/50">
                     {op.platform}

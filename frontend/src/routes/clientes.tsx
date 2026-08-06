@@ -17,6 +17,7 @@ import { PageContainer, PageHeader } from "@/components/page-header";
 import { currency, statusVariant } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/core/api";
+import { ClientAvatar } from "@/components/client-avatar";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({ meta: [{ title: "Clientes · FreelaOS" }] }),
@@ -27,6 +28,7 @@ interface ClientData {
   id: string;
   name: string;
   avatar: string;
+  fotoUrl?: string | null;
   projects: number;
   totalValue: number;
   lastContact: string;
@@ -73,6 +75,7 @@ function ClientesPage() {
             id: c.id,
             name: c.nome,
             avatar: c.nome.substring(0, 2).toUpperCase(),
+            fotoUrl: c.foto_url || null,
             projects: validOps.length,
             totalValue: totalValue > 0 ? totalValue : Number(c.valor_total || 0),
             lastContact: c.ultimo_contato ? new Date(c.ultimo_contato).toLocaleDateString("pt-BR") : "Nenhum contato",
@@ -132,9 +135,7 @@ function ClientesPage() {
                 <TableRow key={c.id} className="cursor-pointer border-border/50 transition-colors hover:bg-muted/50" onClick={() => setOpen(c.id)}>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-primary text-xs font-semibold text-primary-foreground">
-                        {c.avatar}
-                      </div>
+                      <ClientAvatar nome={c.name} fotoUrl={c.fotoUrl} className="h-9 w-9" />
                       <span className="font-medium">{c.name}</span>
                     </div>
                   </TableCell>
@@ -157,9 +158,7 @@ function ClientesPage() {
             <>
               <SheetHeader>
                 <SheetTitle className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-primary text-sm font-semibold text-primary-foreground">
-                    {current.avatar}
-                  </div>
+                  <ClientAvatar nome={current.name} fotoUrl={current.fotoUrl} className="h-10 w-10" />
                   {current.name}
                 </SheetTitle>
               </SheetHeader>

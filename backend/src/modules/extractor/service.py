@@ -140,8 +140,9 @@ def executar_extracao(user_id: str):
         
         try:
             # SCOUT IA
+            cliente_foto_url = vaga.get("cliente_foto_url")
             AgentActivityLogger.log(user_id, "Scout", f"Extraindo dados: [{titulo}]", "processando", 1, {"titulo": titulo, "plataforma": plataforma})
-            scout_res = ScoutService.analisar_vaga(texto_bruto, plataforma, user_id)
+            scout_res = ScoutService.analisar_vaga(texto_bruto, plataforma, user_id, foto_url=cliente_foto_url)
             vaga_id = scout_res.get("vaga_id")
             
             if vaga_id:

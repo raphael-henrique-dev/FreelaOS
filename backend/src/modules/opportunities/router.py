@@ -31,7 +31,7 @@ def gerar_proposta(req: RedatorRequest):
 @router.post("/api/scout/analyze")
 def analisar_vaga(vaga: VagaBruta):
     try:
-        resultado = ScoutService.analisar_vaga(vaga.texto, vaga.plataforma, vaga.perfil_id)
+        resultado = ScoutService.analisar_vaga(vaga.texto, vaga.plataforma, vaga.perfil_id, foto_url=vaga.foto_url)
         return resultado
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

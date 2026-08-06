@@ -9,6 +9,7 @@ import { PageContainer } from "@/components/page-header";
 import { currency, scoreColor, statusVariant } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/core/api";
+import { ClientAvatar } from "@/components/client-avatar";
 
 export const Route = createFileRoute("/oportunidades/$id")({
   loader: async ({ params }) => {
@@ -64,6 +65,7 @@ export const Route = createFileRoute("/oportunidades/$id")({
         id: data.id,
         title: data.titulo,
         client: data.clientes?.nome || data.cliente || "Confidencial",
+        clientPhotoUrl: data.clientes?.foto_url || data.cliente_foto_url || null,
         platform: data.plataforma,
         status: data.status,
         createdAt: new Date(data.criado_em).toLocaleDateString("pt-BR"),
@@ -166,9 +168,12 @@ function OpDetail() {
               <span className="text-xs text-muted-foreground">{op.createdAt}</span>
             </div>
             <CardTitle className="mt-2 text-2xl leading-tight">{op.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {op.client}
-            </p>
+            <div className="mt-3 flex items-center gap-2.5">
+              <ClientAvatar nome={op.client} fotoUrl={op.clientPhotoUrl} className="h-8 w-8" />
+              <div>
+                <p className="text-sm font-medium text-foreground">{op.client}</p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <p className="text-sm leading-relaxed text-foreground/90">{op.description}</p>

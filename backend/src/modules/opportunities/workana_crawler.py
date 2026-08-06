@@ -93,11 +93,31 @@ class WorkanaCrawler:
                                 continue
                                 
                             if texto_vaga:
+                                # Tenta capturar a foto do cliente na página da Workana
+                                foto_cliente = None
+                                try:
+                                    avatar_elem = page.locator(".profile-photo img, .profile-photo a img, img[src*='cf.workana.com/logos'], .user-avatar img, .client-avatar img, .avatar img, .profile-image img, img[src*='avatar'], img[src*='user']")
+                                    if avatar_elem.count() > 0:
+                                        for idx in range(avatar_elem.count()):
+                                            img_node = avatar_elem.nth(idx)
+                                            src = img_node.get_attribute("src") or img_node.get_attribute("data-src")
+                                            if src and not src.startswith("data:") and "blank" not in src and "default" not in src:
+                                                if src.startswith("//"):
+                                                    foto_cliente = f"https:{src}"
+                                                elif src.startswith("/"):
+                                                    foto_cliente = f"https://www.workana.com{src}"
+                                                else:
+                                                    foto_cliente = src
+                                                break
+                                except Exception as e:
+                                    logger.debug(f"[Workana] Não foi possível extrair foto do cliente: {e}")
+
                                 resultados.append({
                                     "plataforma": "Workana",
                                     "titulo": titulo_vaga,
                                     "url": link,
-                                    "texto_bruto": texto_vaga
+                                    "texto_bruto": texto_vaga,
+                                    "cliente_foto_url": foto_cliente
                                 })
                                     
                                 # Pausa amigável para não sobrecarregar o site

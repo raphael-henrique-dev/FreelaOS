@@ -13,6 +13,7 @@ class VagaBruta(BaseModel):
     texto: str
     plataforma: str = "99Freelas"
     perfil_id: str
+    foto_url: Optional[str] = None
 
 class OpportunityUpdate(BaseModel):
     status: Optional[str] = None

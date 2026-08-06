@@ -9,6 +9,7 @@ import { PageContainer, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { ClientAvatar } from "@/components/client-avatar";
 
 export const Route = createFileRoute("/inbox")({
   head: () => ({ meta: [{ title: "Caixa de Entrada · FreelaOS" }] }),
@@ -31,7 +32,7 @@ function InboxPage() {
         .from("mensagens")
         .select(`
           *,
-          clientes(nome),
+          clientes(nome, foto_url),
           oportunidades(titulo)
         `)
         .eq("perfil_id", session.user.id)
@@ -134,6 +135,11 @@ function InboxPage() {
               className={`overflow-hidden border-border/60 transition-colors ${msg.lida ? 'bg-background/40 opacity-80' : 'bg-card/80 border-primary/20 shadow-glow'}`}
             >
               <div className="flex flex-col md:flex-row md:items-start p-4 gap-4">
+                <ClientAvatar 
+                  nome={msg.clientes?.nome || msg.remetente_nome} 
+                  fotoUrl={msg.clientes?.foto_url} 
+                  className="h-10 w-10 shrink-0" 
+                />
                 <div className="flex-1 space-y-1.5 min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className={`font-semibold truncate ${!msg.lida && 'text-primary'}`}>{msg.remetente_nome}</h4>

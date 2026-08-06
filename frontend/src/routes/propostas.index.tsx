@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageContainer, PageHeader } from "@/components/page-header";
 import { currency, statusVariant } from "@/lib/mock-data";
+import { ClientAvatar } from "@/components/client-avatar";
 
 export const Route = createFileRoute("/propostas/")({
   head: () => ({ meta: [{ title: "Propostas · FreelaOS" }] }),
@@ -25,7 +26,7 @@ function PropostasList() {
       
       const { data, error } = await supabase
         .from("oportunidades")
-        .select("*")
+        .select("*, clientes(nome, foto_url)")
         .eq("perfil_id", session.user.id)
         .not("proposta_ia", "is", null)
         .order("criado_em", { ascending: false });
@@ -36,7 +37,8 @@ function PropostasList() {
         const mappedData = valid.map((item: any) => ({
           id: item.id || item.ID,
           title: item.titulo || item.TITULO,
-          client: item.cliente || item.CLIENTE || "Confidencial",
+          client: item.clientes?.nome || item.cliente || item.CLIENTE || "Confidencial",
+          clientPhotoUrl: item.clientes?.foto_url || item.cliente_foto_url || null,
           platform: item.plataforma || item.PLATAFORMA,
           stack: item.stack || item.STACK || [],
           budget: item.orcamento || item.ORCAMENTO,
@@ -78,11 +80,14 @@ function PropostasList() {
                 <Badge variant="outline" className="border-border/60 bg-background/40">{op.platform}</Badge>
                 <Badge variant={statusVariant(op.status)}>{op.status}</Badge>
               </div>
-              <div>
-                <Link to="/propostas/$id" params={{ id: op.id }} className="text-base font-semibold hover:text-primary">
-                  {op.title}
-                </Link>
-                <p className="text-xs text-muted-foreground">{op.client}</p>
+              <div className="flex items-start gap-3">
+                <ClientAvatar nome={op.client} fotoUrl={op.clientPhotoUrl} className="h-9 w-9 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <Link to="/propostas/$id" params={{ id: op.id }} className="text-base font-semibold hover:text-primary line-clamp-1">
+                    {op.title}
+                  </Link>
+                  <p className="text-xs text-muted-foreground truncate">{op.client}</p>
+                </div>
               </div>
               <p className="line-clamp-2 text-sm text-muted-foreground">
                 {op.proposta_ia}
