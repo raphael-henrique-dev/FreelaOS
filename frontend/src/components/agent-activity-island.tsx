@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { getLatestAgentActivity } from "@/queries/agentes";
 import { toast } from "sonner";
 import { 
   Bot, 
@@ -74,20 +75,45 @@ export function AgentActivityIsland() {
 
   useEffect(() => {
     let channel: any = null;
+    let isMounted = true;
 
     const setupSubscription = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session || !isMounted) return;
       const userId = session.user.id;
 
+      // 1. Busca inicial da atividade mais recente via API (Clean Arch / Repository)
+      try {
+        const latestActivity = await getLatestAgentActivity(userId);
+
+        if (latestActivity && isMounted) {
+          const createdAt = new Date(latestActivity.criado_em).getTime();
+          const isRecent = Date.now() - createdAt < 120000; // Últimos 2 minutos
+          
+          if (latestActivity.status === "processando" || (isRecent && latestActivity.status !== "concluido")) {
+            setCurrentActivity(latestActivity as AgentActivity);
+            setIsVisible(true);
+
+            if (latestActivity.status === "erro") {
+              dismissTimerRef.current = setTimeout(() => {
+                if (isMounted) setIsVisible(false);
+              }, 8000);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao buscar atividade inicial dos agentes:", err);
+      }
+
+      // 2. Inicia a escuta em tempo real para novos passos dos agentes
       channel = supabase
-        .channel("agent-activities-realtime")
+        .channel(`agent-activities-${userId}`)
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "atividades_agentes" },
           (payload) => {
             const newActivity = payload.new as AgentActivity;
-            if (newActivity.perfil_id !== userId) return;
+            if (newActivity.perfil_id !== userId || !isMounted) return;
 
             setCurrentActivity(newActivity);
             setIsVisible(true);
@@ -98,16 +124,24 @@ export function AgentActivityIsland() {
               dismissTimerRef.current = null;
             }
 
-            // Tratamento de erro: Notifica via Toast
+            // Tratamento de erro: Notifica via Toast e auto-oculta em 8s
             if (newActivity.status === "erro") {
               toast.error(`Falha no ${newActivity.agente}: ${newActivity.acao}`);
+              dismissTimerRef.current = setTimeout(() => {
+                if (isMounted) {
+                  setIsVisible(false);
+                  setIsExpanded(false);
+                }
+              }, 8000);
             }
 
             // Tratamento de conclusão de ciclo: Espera 10 segundos antes de ocultar
             if (newActivity.status === "concluido") {
               dismissTimerRef.current = setTimeout(() => {
-                setIsVisible(false);
-                setIsExpanded(false);
+                if (isMounted) {
+                  setIsVisible(false);
+                  setIsExpanded(false);
+                }
               }, 10000);
             }
           }
@@ -118,6 +152,7 @@ export function AgentActivityIsland() {
     setupSubscription();
 
     return () => {
+      isMounted = false;
       if (channel) supabase.removeChannel(channel);
       if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     };

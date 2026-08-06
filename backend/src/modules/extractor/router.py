@@ -66,6 +66,18 @@ def manage_autopilot(user_id: str):
             return {"status": "stopped", "message": "Autopilot desativado."}
     return {"status": "unchanged"}
 
+from backend.src.modules.extractor.repository import ActivityRepository
+
+repo_activity = ActivityRepository()
+
+@router.get("/api/extractor/activities/latest")
+def get_latest_activity(user_id: str):
+    return repo_activity.get_latest_activity(user_id)
+
+@router.get("/api/extractor/activities")
+def get_activities(user_id: str, limit: int = 50):
+    return repo_activity.get_activities(user_id, limit=limit)
+
 @router.post("/api/extractor/run")
 def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks):
     BrowserManager.clear_cancelled(req.user_id)

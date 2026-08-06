@@ -112,6 +112,7 @@ class WorkanaCrawler:
             if BrowserManager.is_cancelled(user_id):
                 logger.info(f"[Workana] Crawler encerrado com sucesso devido ao logout do usuário {user_id}.")
                 return resultados
-            raise ValueError(f"Erro no Crawler da Workana: {str(e)}")
+            logger.error(f"[Workana] Erro durante a execução do crawler: {e}")
+            return resultados
 
         return resultados

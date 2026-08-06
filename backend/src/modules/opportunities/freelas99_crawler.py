@@ -109,6 +109,6 @@ class Freelas99Crawler:
                 logger.info(f"[99Freelas] Crawler encerrado com sucesso devido ao logout do usuário {user_id}.")
             else:
                 logger.error(f"[99Freelas] Erro inesperado durante execução: {e}")
-                raise e
+            return resultados
 
         return resultados

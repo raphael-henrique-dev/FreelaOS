@@ -148,6 +148,7 @@ def executar_extracao(user_id: str):
                 repo_op.update_opportunity(vaga_id, {"url": url_vaga})
                 urls_existentes.add(url_vaga)
                 vagas_processadas_count += 1
+                AgentActivityLogger.log(user_id, "Scout", f"Dados extraídos com sucesso: [{titulo}]", "sucesso", 1, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                 
                 if BrowserManager.is_cancelled(user_id):
                     return

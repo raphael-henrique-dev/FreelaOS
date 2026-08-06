@@ -51,3 +51,30 @@ export function useToggleAutopilot() {
     }
   });
 }
+
+export async function getLatestAgentActivity(userId: string) {
+  try {
+    const res = await api.get(`/api/extractor/activities/latest?user_id=${userId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Erro ao buscar última atividade do agente:", error);
+    return null;
+  }
+}
+
+export function useAgentActivities(userId?: string, limit: number = 50) {
+  return useQuery({
+    queryKey: ["agent-activities", userId, limit],
+    queryFn: async () => {
+      let uid = userId;
+      if (!uid) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuário não autenticado");
+        uid = user.id;
+      }
+      const res = await api.get(`/api/extractor/activities?user_id=${uid}&limit=${limit}`);
+      return res.data;
+    },
+    enabled: !!userId,
+  });
+}
