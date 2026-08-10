@@ -36,7 +36,7 @@ class SenderService:
         with sync_playwright() as p:
             browser = p.chromium.launch_persistent_context(
                 user_data_dir=session_dir,
-                headless=True,
+                headless=False,
                 viewport={"width": 1280, "height": 720},
                 args=["--disable-blink-features=AutomationControlled"]
             )

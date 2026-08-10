@@ -25,7 +25,7 @@ async def monitor_loop(user_id: str):
     logger.info(f"Iniciando monitor de Inbox para o usuário {user_id}")
     while user_id in active_monitors and not BrowserManager.is_cancelled(user_id):
         try:
-            logger.debug(f"Verificando mensagens não lidas para {user_id}...")
+            # logger.debug(f"Verificando mensagens não lidas para {user_id}...")
             await check_unread_messages(user_id)
         except Exception as e:
             if BrowserManager.is_cancelled(user_id):
@@ -63,7 +63,7 @@ async def check_unread_messages(user_id: str):
             try:
                 await unread_locators.first.wait_for(state="visible", timeout=5000)
             except Exception:
-                logger.debug(f"Nenhuma nova mensagem encontrada para o usuário {user_id}.")
+                # logger.debug(f"Nenhuma nova mensagem encontrada para o usuário {user_id}.")
                 return
             count = await unread_locators.count()
             

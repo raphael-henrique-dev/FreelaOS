@@ -40,6 +40,12 @@ export function useToggleAutopilot() {
       // Notifica o backend Python para acordar/desligar a thread background
       await api.post('/api/autopilot/check', { user_id: userId });
       
+      // Proativamente aciona a ilha dinâmica no frontend para melhor feedback visual
+      if (newState) {
+        // Dispara um evento customizado que a AgentActivityIsland pode escutar
+        window.dispatchEvent(new CustomEvent('motor-started'));
+      }
+      
       return newState;
     },
     onSuccess: (newState) => {

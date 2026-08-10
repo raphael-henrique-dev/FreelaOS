@@ -63,6 +63,9 @@ def manage_autopilot(user_id: str):
     else:
         if user_id in active_autopilots:
             active_autopilots.discard(user_id)
+            BrowserManager.cancel_user(user_id)
+            from backend.src.core.activity_logger import AgentActivityLogger
+            AgentActivityLogger.log(user_id, "Motor", "Piloto automático desligado.", "concluido", 4)
             return {"status": "stopped", "message": "Autopilot desativado."}
     return {"status": "unchanged"}
 

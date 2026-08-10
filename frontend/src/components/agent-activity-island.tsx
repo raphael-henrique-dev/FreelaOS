@@ -98,6 +98,16 @@ export function AgentActivityIsland() {
               dismissTimerRef.current = setTimeout(() => {
                 if (isMounted) setIsVisible(false);
               }, 8000);
+            } else if (latestActivity.status === "concluido") {
+              // Já escondemos direto se for concluído, não deve nem entrar no if acima
+            } else if (latestActivity.status !== "processando") {
+              // Se for alerta ou sucesso antigo, esconde rápido
+              dismissTimerRef.current = setTimeout(() => {
+                if (isMounted) {
+                  setIsVisible(false);
+                  setIsExpanded(false);
+                }
+              }, 10000); 
             }
           }
         }
@@ -134,9 +144,17 @@ export function AgentActivityIsland() {
                 }
               }, 8000);
             }
-
             // Tratamento de conclusão de ciclo: Espera 10 segundos antes de ocultar
-            if (newActivity.status === "concluido") {
+            else if (newActivity.status === "concluido") {
+              dismissTimerRef.current = setTimeout(() => {
+                if (isMounted) {
+                  setIsVisible(false);
+                  setIsExpanded(false);
+                }
+              }, 10000);
+            }
+            // Watchdog removido. Se estiver processando/alerta/sucesso, mantém visível até vir o concluído/erro.
+            else if (newActivity.status !== "processando") {
               dismissTimerRef.current = setTimeout(() => {
                 if (isMounted) {
                   setIsVisible(false);
@@ -149,12 +167,33 @@ export function AgentActivityIsland() {
         .subscribe();
     };
 
+    const handleMotorStarted = () => {
+      setCurrentActivity({
+        id: 'booting',
+        perfil_id: '',
+        agente: 'Motor',
+        acao: 'Acionando motores...',
+        status: 'processando',
+        etapa: 1,
+        criado_em: new Date().toISOString(),
+      });
+      setIsVisible(true);
+
+      // Limpa qualquer timer anterior
+      if (dismissTimerRef.current) {
+        clearTimeout(dismissTimerRef.current);
+      }
+      // Watchdog removido: a ilha fica visível até que o backend emita o sinal de 'concluido' ou 'erro'
+    };
+
+    window.addEventListener('motor-started', handleMotorStarted);
     setupSubscription();
 
     return () => {
       isMounted = false;
       if (channel) supabase.removeChannel(channel);
       if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      window.removeEventListener('motor-started', handleMotorStarted);
     };
   }, []);
 

@@ -62,13 +62,16 @@ def executar_extracao(user_id: str):
     from backend.src.core.activity_logger import AgentActivityLogger
     AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1)
     
+    res_ops = repo_op.get_opportunities(user_id)
+    urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
+    
     # 1. Crawler 99Freelas
     if not BrowserManager.is_cancelled(user_id):
         try:
             from backend.src.modules.opportunities.freelas99_crawler import Freelas99Crawler
             AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "99Freelas"})
             logger.info("Iniciando crawler do 99Freelas...")
-            vagas_99 = Freelas99Crawler.executar(user_id, buscas, ignorar_exclusivos)
+            vagas_99 = Freelas99Crawler.executar(user_id, buscas, ignorar_exclusivos, urls_existentes)
             vagas_extraidas.extend(vagas_99)
         except Exception as e:
             if BrowserManager.is_cancelled(user_id):
@@ -101,9 +104,6 @@ def executar_extracao(user_id: str):
         return
 
     # 3. Pipeline Unificada de I.A. (Scout -> Analista -> Redator -> Sender)
-    res_ops = repo_op.get_opportunities(user_id)
-    urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
-    
     novas_vagas = [v for v in vagas_extraidas if v.get("url") not in urls_existentes]
     total_novas = len(novas_vagas)
     

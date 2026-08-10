@@ -82,10 +82,9 @@ class WorkanaCrawler:
                             link = item["url"]
                             titulo_vaga = item["titulo"]
                             # Extract job detail
-                            page.goto(link)
-                            page.wait_for_timeout(3000)
-                        
                             try:
+                                page.goto(link, timeout=15000, wait_until="domcontentloaded")
+                                page.wait_for_timeout(1000)
                                 # Extrai o texto da página da vaga. 
                                 texto_vaga = page.inner_text("body")
                             except Exception as e:
