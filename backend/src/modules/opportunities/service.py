@@ -119,6 +119,7 @@ Nível de Experiência: {perfil.get('senioridade', 'Não informado')}
 
 [DADOS DA VAGA]
 Título: {vaga.get('titulo')}
+Nome do cliente: {vaga.get('cliente', '').split(' ')[0] if vaga.get('cliente') else ''}
 Descrição Completa: {vaga.get('descricao')}
 Orçamento: R$ {vaga.get('orcamento')}
 
@@ -131,9 +132,10 @@ Orçamento: R$ {vaga.get('orcamento')}
 3. Se houver correspondência entre a stack exigida na vaga e os projetos mencionados na Análise do Portfólio (GitHub) (se não existir, desconsidere essa instrução), você DEVE citar explicitamente o nome desses projetos
 (substitua caracteres de separação '-', '_', '.' por espaços ' '; formate o nome dos projetos em TITLE CASE) e um breve resumo deles na proposta para gerar autoridade imediata.
 4. Escreva em Português do Brasil de forma natural (evite clichês de IA).
-5. Assine no final com o nome do profissional.
-6. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
-7. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
+5. No começo de toda proposta inicie com "Olá, 'nome do cliente'! Tudo bem?" (substitua 'nome do cliente' pelo nome real do cliente, se disponível; caso contrário, use "Olá! ...").
+6. Assine no final com o nome do profissional.
+7. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
+8. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
 {{
   "texto_proposta": "Olá 'nome do cliente'! ...",
   "valor": 1500,

@@ -117,7 +117,7 @@ class Freelas99Crawler:
                                     vaga_page.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "stylesheet", "script", "font", "media"] else route.continue_())
                                     vaga_page.goto(url_vaga, timeout=10000, wait_until="domcontentloaded")
                                     
-                                    avatar_elem = vaga_page.locator("img.nnf-with-placeholder, img[src*='cloudfront.net/profile'], img[data-placeholder], .item-autor img, .usuario-avatar img, .avatar img, .author img, img[src*='avatar'], img[src*='usuario'], img[src*='perfil'], img.user-img")
+                                    avatar_elem = vaga_page.locator(".info-usuario.cliente .info-usuario-imagem img")
                                     if avatar_elem.count() > 0:
                                         for idx in range(avatar_elem.count()):
                                             img_node = avatar_elem.nth(idx)

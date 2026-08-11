@@ -76,6 +76,14 @@ def update_opportunity(vaga_id: str, req: OpportunityUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/api/opportunities/delete_all")
+def delete_all_opportunities(user_id: str):
+    try:
+        repo.delete_all_opportunities(user_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/api/opportunities/{vaga_id}")
 def delete_opportunity(vaga_id: str):
     try:

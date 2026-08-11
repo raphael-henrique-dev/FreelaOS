@@ -573,7 +573,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
         <Card className="border-border/60 bg-card/60 lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base">Modelos de Proposta IA</CardTitle>
-            <p className="text-xs text-muted-foreground">Escolha qual template o Redator IA deve usar como base nas suas bids.</p>
+            <p className="text-xs text-muted-foreground">Escolha qual modelo o Redator IA deve usar como base nas suas propostas.</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
@@ -667,7 +667,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 <option value={24}>Uma vez por dia (24h)</option>
               </select>
               <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
-                Define de quanto em quanto tempo o Piloto Automático de Agents acorda para procurar novas vagas nas plataformas conectadas.
+                Define de quanto em quanto tempo o Piloto Automático acorda para procurar novas vagas nas plataformas conectadas.
               </p>
             </div>
           </CardContent>

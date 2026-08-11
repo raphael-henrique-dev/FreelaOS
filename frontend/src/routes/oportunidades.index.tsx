@@ -65,7 +65,7 @@ function OpListContainer() {
     id: item.id,
     title: item.titulo,
     client: item.clientes?.nome || item.cliente || "Desconhecido",
-    clientPhotoUrl: item.clientes?.foto_url || item.cliente_foto_url || null,
+    clientPhotoUrl: item.cliente_foto_url || item.clientes?.foto_url || null,
     platform: item.plataforma,
     stack: item.stack || [],
     budget: item.orcamento,
@@ -156,18 +156,18 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
   }
 
   async function handleWipeAll() {
-    if (!confirm("Deseja realmente ignorar TODAS as oportunidades? Essa ação não pode ser desfeita.")) return;
+    if (!confirm(" [WARNING] Deseja realmente APAGAR TODAS as oportunidades? Essa ação não pode ser desfeita.")) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
       
-      const { error } = await supabase.from("oportunidades").update({ status: "Ignorada" }).eq("perfil_id", session.user.id);
-      if (error) throw error;
-      
-      toast.success("Todas as oportunidades foram ignoradas.");
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      const res = await api.delete("/api/opportunities/delete_all", { params: { user_id: session.user.id } });
+      if (res.data) {
+        toast.success("Todas as oportunidades foram apagadas.");
+        queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      }
     } catch (e: any) {
-      toast.error(e.message || "Erro ao remover oportunidades.");
+      toast.error(e.message || "Erro ao apagar oportunidades.");
     }
   }
   
@@ -272,9 +272,6 @@ function OpActions({
 }: any) {
   return (
     <>
-      <Button variant="ghost" size="icon" className="h-8 w-8 mr-2 text-muted-foreground/20 hover:text-destructive hover:bg-destructive/10 transition-colors" onClick={handleWipeAll} title="DEBUG: Apagar tudo">
-        <Trash2 className="h-3 w-3"/>
-      </Button>
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className={filterStatuses.length > 0 || filterPlatforms.length > 0 || filterMinScore > 0 ? "border-primary text-primary" : ""}>
@@ -350,7 +347,7 @@ function OpActions({
         className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
         onClick={handleWipeAll}
       >
-        <Trash2 className="mr-2 h-4 w-4" /> Ignorar todas oportunidades
+        <Trash2 className="mr-2 h-4 w-4" /> APAGAR todas oportunidades
       </Button>
       <Button 
         size="sm" 

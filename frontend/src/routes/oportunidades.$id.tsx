@@ -65,7 +65,7 @@ export const Route = createFileRoute("/oportunidades/$id")({
         id: data.id,
         title: data.titulo,
         client: data.clientes?.nome || data.cliente || "Confidencial",
-        clientPhotoUrl: data.clientes?.foto_url || data.cliente_foto_url || null,
+        clientPhotoUrl: data.cliente_foto_url || data.clientes?.foto_url || null,
         platform: data.plataforma,
         status: data.status,
         createdAt: new Date(data.criado_em).toLocaleDateString("pt-BR"),

@@ -21,6 +21,9 @@ class OpportunityRepository:
     def delete_opportunity(self, vaga_id: str):
         return db.table("oportunidades").delete().eq("id", vaga_id).execute()
 
+    def delete_all_opportunities(self, user_id: str):
+        return db.table("oportunidades").delete().eq("perfil_id", user_id).execute()
+
 class ProfileRepository:
     def get_profile(self, user_id: str):
         perfil_res = db.table("perfis").select("*").eq("id", user_id).execute()
