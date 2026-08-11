@@ -66,7 +66,7 @@ O FreelaOS atua como uma **equipe comercial autônoma**, trabalhando em *backgro
 
 ## 🏗️ Arquitetura do Sistema
 
-O FreelaOS possui uma arquitetura moderna dividida entre um Frontend ultra reativo em React e um Backend robusto servindo como "cérebro" de automação e scraping.
+O FreelaOS possui uma arquitetura moderna dividida entre um Frontend reativo em React e um Backend robusto servindo como "cérebro" de automação, scraping e dos agentes de I.A.
 
 ```mermaid
 graph TD
@@ -83,10 +83,10 @@ graph TD
         Playwright["Motor RPA / Scraping"]
         
         subgraph Agents ["Multi-Agent System"]
-            Scout["🕵️‍♂️ Scout IA"]
-            Analyst["🧠 Analista IA"]
-            Writer["✍️ Redator IA"]
-            Sender["🚀 Sender"]
+            Scout["Scout IA"]
+            Analyst["Analista IA"]
+            Writer["Redator IA"]
+            Sender["Sender"]
         end
     end
 
@@ -133,7 +133,7 @@ graph TD
 - Node.js (v18+)
 - Python (3.11+)
 - Conta no Supabase
-- Chaves de API (Gemini/Groq)
+- Chaves de API (Gemini/Groq/OpenAI/Anthropic)
 
 ### 1. Backend (O Cérebro)
 ```bash
