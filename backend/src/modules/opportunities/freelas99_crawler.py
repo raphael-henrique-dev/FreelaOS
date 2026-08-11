@@ -132,7 +132,7 @@ class Freelas99Crawler:
                                             
                                             if src and not src.startswith("data:") and "blank" not in src:
                                                 if "default.jpg" in src or (placeholder and src == placeholder):
-                                                    continue
+                                                    break
                                                 if src.startswith("//"):
                                                     foto_cliente = f"https:{src}"
                                                 elif src.startswith("/"):
