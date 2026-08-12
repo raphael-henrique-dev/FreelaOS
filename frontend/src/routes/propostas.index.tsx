@@ -33,7 +33,7 @@ function PropostasList() {
         
       if (data) {
         // filter out empty ones
-        const valid = data.filter(d => d.proposta_ia && d.proposta_ia.trim() !== "");
+        const valid = data.filter(d => d.proposta_ia && d.proposta_ia.trim() !== "" && d.status !== "Ignorada");
         const mappedData = valid.map((item: any) => ({
           id: item.id || item.ID,
           title: item.titulo || item.TITULO,

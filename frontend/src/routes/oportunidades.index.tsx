@@ -24,7 +24,7 @@ import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/lib/supabase"; 
 import { scoreColor, statusVariant } from "@/lib/mock-data";
 import { toast } from "sonner";
-import { useOportunidades, useDeleteOportunidade } from "@/queries/oportunidades";
+import { useOportunidades, useUpdateOportunidade } from "@/queries/oportunidades";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientAvatar } from "@/components/client-avatar";
 
@@ -74,7 +74,7 @@ function OpListContainer() {
     status: item.status,
     criado_em: item.criado_em,
     explicacao_score: item.explicacao_score
-  })).filter((op: any) => op.status !== "Ignorada");
+  }));
 
   if (error) {
     return (
@@ -112,7 +112,7 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
   
   const [isExtracting, setIsExtracting] = useState(false);
   const queryClient = useQueryClient();
-  const { mutateAsync: deleteOportunidade } = useDeleteOportunidade();
+  const { mutateAsync: updateOportunidade } = useUpdateOportunidade();
 
   useEffect(() => { localStorage.setItem("freelaos_ops_search", searchTerm); }, [searchTerm]);
   useEffect(() => { localStorage.setItem("freelaos_ops_statuses", JSON.stringify(filterStatuses)); }, [filterStatuses]);
@@ -127,6 +127,7 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
       const stackMatch = op.stack?.some((s: string) => s.toLowerCase().includes(term));
       if (!titleMatch && !clientMatch && !stackMatch) return false;
     }
+    if (op.status === "Ignorada" && !filterStatuses.includes("Ignorada")) return false;
     if (filterStatuses.length > 0 && !filterStatuses.includes(op.status)) return false;
     if (filterPlatforms.length > 0 && !filterPlatforms.includes(op.platform)) return false;
     if (filterMinScore > 0 && (op.score || 0) < filterMinScore) return false;
@@ -256,7 +257,7 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
                 <Trash2 className="mr-1.5 h-3 w-3" /> Ignorar todas deste dia
               </Button>
             </div>
-            <OpTable groupItems={group.items} handleDelete={(id) => deleteOportunidade(id)} />
+            <OpTable groupItems={group.items} handleIgnore={(id) => { updateOportunidade({ id, data: { status: "Ignorada" } }).then(() => toast.success("Oportunidade ignorada")) }} />
           </div>
         ))}
       </div>
@@ -286,7 +287,7 @@ function OpActions({
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Status</Label>
               <div className="grid grid-cols-2 gap-2">
-                {["Analisada", "Pendente", "Proposta enviada"].map(status => (
+                {["Analisada", "Pendente", "Proposta enviada", "Ignorada"].map(status => (
                   <div key={status} className="flex items-center space-x-2">
                     <Checkbox 
                       id={`status-${status}`} 
@@ -362,7 +363,7 @@ function OpActions({
   );
 }
 
-function OpTable({ groupItems, handleDelete }: { groupItems: any[], handleDelete: (id: string) => void }) {
+function OpTable({ groupItems, handleIgnore }: { groupItems: any[], handleIgnore: (id: string) => void }) {
   return (
     <Card className="hover:border-border hover:translate-y-0">
       <CardContent className="overflow-x-auto p-0">
@@ -437,7 +438,7 @@ function OpTable({ groupItems, handleDelete }: { groupItems: any[], handleDelete
                     variant="ghost" 
                     size="icon" 
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" 
-                    onClick={() => handleDelete(op.id)}
+                    onClick={() => handleIgnore(op.id)}
                     title="Ignorar vaga"
                   >
                     <Trash2 className="h-4 w-4" />

@@ -100,7 +100,7 @@ class WorkanaCrawler:
                                         for idx in range(avatar_elem.count()):
                                             img_node = avatar_elem.nth(idx)
                                             src = img_node.get_attribute("src") or img_node.get_attribute("data-src")
-                                            if src and not src.startswith("data:") and "blank" not in src and "default" not in src:
+                                            if src and not src.startswith("data:") and "blank" not in src and "default" not in src and "sneak-peek-user" not in src:
                                                 if src.startswith("//"):
                                                     foto_cliente = f"https:{src}"
                                                 elif src.startswith("/"):

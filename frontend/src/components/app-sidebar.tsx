@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { api } from "@/core/api";
 import { performFullLogout } from "@/lib/auth-utils";
 import { toast, Toaster} from 'sonner';
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Compass,
@@ -119,16 +120,33 @@ export function AppSidebar() {
           <SidebarGroupLabel>Operação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {nav.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url, item.exact)} tooltip={item.title}>
-                    <Link to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {nav.map((item, i) => {
+                const active = isActive(item.url, item.exact);
+                return (
+                  <motion.div 
+                    key={item.url}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 24 }}
+                  >
+                    <SidebarMenuItem className="relative">
+                      {active && (
+                        <motion.div
+                          layoutId="sidebar-active-indicator"
+                          className="absolute inset-0 z-0 rounded-md bg-sidebar-accent"
+                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                        />
+                      )}
+                      <SidebarMenuButton asChild isActive={false} tooltip={item.title} className="relative z-10 bg-transparent hover:bg-sidebar-accent/50 h-11 px-3 text-[15px]">
+                        <Link to={item.url} className={active ? "text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/70"}>
+                          <item.icon className="h-5 w-5 mr-1.5" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </motion.div>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -137,16 +155,33 @@ export function AppSidebar() {
           <SidebarGroupLabel>Sistema</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {ai.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <Link to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {ai.map((item, i) => {
+                const active = isActive(item.url);
+                return (
+                  <motion.div 
+                    key={item.url}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: (nav.length + i) * 0.05, type: "spring", stiffness: 300, damping: 24 }}
+                  >
+                    <SidebarMenuItem className="relative">
+                      {active && (
+                        <motion.div
+                          layoutId="sidebar-active-indicator"
+                          className="absolute inset-0 z-0 rounded-md bg-sidebar-accent"
+                          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                        />
+                      )}
+                      <SidebarMenuButton asChild isActive={false} tooltip={item.title} className="relative z-10 bg-transparent hover:bg-sidebar-accent/50 h-11 px-3 text-[15px]">
+                        <Link to={item.url} className={active ? "text-sidebar-accent-foreground font-medium" : "text-sidebar-foreground/70"}>
+                          <item.icon className="h-5 w-5 mr-1.5" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </motion.div>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

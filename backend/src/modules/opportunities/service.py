@@ -176,7 +176,7 @@ class ScoutService:
           "ORCAMENTO": 0,
           "PRAZO": "ex: 2 semanas, indeterminado",
           "STACK": ["Tech1", "Tech2"],
-          "DESCRICAO": "Resumo em 1 frase do que precisa ser feito"
+          "DESCRICAO": "Resumo do que precisa ser feito. Seja conciso, mas completo. Evite repetir o título. Não inclua informações irrelevantes. Inclua apenas informações pertinentes à realização do projeto e a exigências do cliente, como stack/tecnologias necessárias, requisitos, entregáveis etc."
         }}
 
         TEXTO DA VAGA BRUTA:

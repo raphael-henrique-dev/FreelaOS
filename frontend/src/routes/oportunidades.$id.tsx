@@ -120,13 +120,13 @@ function OpDetail() {
     }
   }
 
-  async function handleDelete() {
+  async function handleIgnore() {
     if (!confirm("Deseja realmente ignorar esta oportunidade?")) return;
     try {
-      await api.delete(`/api/opportunities/${op.id}`);
+      await api.patch(`/api/opportunities/${op.id}`, { status: "Ignorada" });
       navigate({ to: "/oportunidades" });
     } catch (error: any) {
-      alert("Erro ao remover oportunidade: " + error.message);
+      alert("Erro ao ignorar oportunidade: " + error.message);
     }
   }
 
@@ -233,7 +233,7 @@ function OpDetail() {
                 size="lg"
                 variant="outline"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-                onClick={handleDelete}
+                onClick={handleIgnore}
               >
                 <Trash2 className="mr-2 h-4 w-4" /> Ignorar
               </Button>
