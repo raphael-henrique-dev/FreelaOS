@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { api } from "@/core/api";
 import {
   Area,
   AreaChart,
@@ -101,9 +102,52 @@ function Dashboard() {
   const opsEnviadas = data.filter((op: any) => op.status === "Proposta enviada" && op.data_envio_proposta != null);
   const enviadasSemana = opsEnviadas.filter((op: any) => new Date(op.data_envio_proposta) >= umaSemanaAtras).length;
 
+  const [responseRateStr, setResponseRateStr] = useState<string>("0%");
+
+  useEffect(() => {
+    async function calcResponseRate() {
+      if (!rawOpportunities) return;
+      
+      const umaSemana = new Date();
+      umaSemana.setDate(new Date().getDate() - 7);
+      
+      const opsEnviadas = rawOpportunities.filter((op: any) => op.status === "Proposta enviada" && op.data_envio_proposta != null);
+      const enviadasSemana = opsEnviadas.filter((op: any) => new Date(op.data_envio_proposta) >= umaSemana);
+      
+      if (enviadasSemana.length === 0) {
+        setResponseRateStr("0%");
+        return;
+      }
+      
+      const clientIds = enviadasSemana.map((op: any) => op.cliente_id || op.clientes?.id).filter(Boolean);
+      if (clientIds.length === 0) {
+        setResponseRateStr("0%");
+        return;
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      try {
+        const res = await api.post("/api/communications/check-responses", {
+          user_id: session.user.id,
+          client_ids: clientIds
+        });
+        
+        const respondedClientIds = res.data.responded_client_ids || [];
+        const rate = (respondedClientIds.length / enviadasSemana.length) * 100;
+        setResponseRateStr(`${rate % 1 === 0 ? rate.toFixed(0) : rate.toFixed(1).replace('.', ',')}%`);
+      } catch (e) {
+        setResponseRateStr("0%");
+      }
+    }
+    
+    calcResponseRate();
+  }, [rawOpportunities]);
+
   const dynamicStats = [
     { label: "Propostas enviadas (7d)", value: enviadasSemana, delta: "Real", icon: Send },
-    { label: "Taxa de resposta", value: `${dashboardStats.responseRate}%`, delta: "+4pp", icon: PercentSquare },
+    { label: "Taxa de resposta", value: responseRateStr, delta: "Real", icon: PercentSquare },
     { label: "Projetos fechados", value: dashboardStats.closed, delta: "+2", icon: CheckCircle2 },
     { label: "Receita do mês", value: currency(dashboardStats.revenue), delta: "+22%", icon: TrendingUp },
   ];

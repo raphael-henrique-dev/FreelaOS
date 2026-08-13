@@ -1,11 +1,19 @@
 from fastapi import APIRouter, HTTPException
-from backend.src.modules.communications.schemas import SubmitRequest, MessageUpdate
+from backend.src.modules.communications.schemas import SubmitRequest, MessageUpdate, CheckResponsesRequest
 from backend.src.modules.communications.service import SenderService
 from backend.src.modules.communications.repository import MessageRepository
 
 repo = MessageRepository()
 
 router = APIRouter()
+
+@router.post("/api/communications/check-responses")
+def check_responses(req: CheckResponsesRequest):
+    try:
+        responded = repo.get_responding_clients(req.user_id, req.client_ids)
+        return {"responded_client_ids": responded}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/api/communications/messages/all")
 def delete_all_messages(user_id: str):

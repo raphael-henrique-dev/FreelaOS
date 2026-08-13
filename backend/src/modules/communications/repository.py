@@ -12,6 +12,14 @@ class MessageRepository:
                     return True
         return False
 
+    def get_responding_clients(self, user_id: str, client_ids: list[str]) -> list[str]:
+        if not client_ids:
+            return []
+        res = db.table("mensagens").select("cliente_id").eq("perfil_id", user_id).in_("cliente_id", client_ids).execute()
+        if res.data:
+            return list(set(msg["cliente_id"] for msg in res.data if msg.get("cliente_id")))
+        return []
+
     def get_latest_opportunity_for_client(self, cliente_id: str):
         op_res = db.table("oportunidades").select("id").eq("cliente_id", cliente_id).order("criado_em", desc=True).limit(1).execute()
         if op_res.data and len(op_res.data) > 0:

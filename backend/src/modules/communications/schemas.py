@@ -1,5 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+
+class CheckResponsesRequest(BaseModel):
+    user_id: str
+    client_ids: List[str]
 
 class SubmitRequest(BaseModel):
     vaga_id: str
