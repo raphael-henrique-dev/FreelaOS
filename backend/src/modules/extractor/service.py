@@ -104,6 +104,10 @@ def executar_extracao(user_id: str):
         return
 
     # 3. Pipeline Unificada de I.A. (Scout -> Analista -> Redator -> Sender)
+    processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana)
+
+def processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana):
+    from backend.src.core.activity_logger import AgentActivityLogger
     novas_vagas = [v for v in vagas_extraidas if v.get("url") not in urls_existentes]
     total_novas = len(novas_vagas)
     
@@ -220,4 +224,79 @@ def executar_extracao(user_id: str):
     logger.info("Extração Concluída!")
     AgentActivityLogger.log(user_id, "Motor", f"Ciclo de extração concluído! ({vagas_processadas_count} vagas processadas)", "concluido", 4, {"total_vagas": vagas_processadas_count})
 
-# Rotas movidas para router.py
+def executar_extracao_url(user_id: str, url: str):
+    logger.info(f"Iniciando extração direta da URL: {url} para usuário {user_id}")
+    
+    texto_bruto = ""
+    foto_cliente = None
+    plataforma = "Desconhecida"
+    if "99freelas.com.br" in url:
+        plataforma = "99Freelas"
+    elif "workana.com" in url:
+        plataforma = "Workana"
+
+    from playwright.sync_api import sync_playwright
+    from backend.src.core.activity_logger import AgentActivityLogger
+
+    AgentActivityLogger.log(user_id, "Scout", f"Visitando URL sob demanda...", "processando", 1)
+    
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+        try:
+            page = browser.new_page()
+            page.goto(url, timeout=30000)
+            page.wait_for_timeout(2000)
+            
+            if plataforma == "99Freelas":
+                expandir_btn = page.locator("text='Expandir'")
+                if expandir_btn.count() > 0:
+                    try:
+                        expandir_btn.first.click()
+                        page.wait_for_timeout(800)
+                    except:
+                        pass
+                
+                avatar_elem = page.locator(".info-usuario.cliente .info-usuario-imagem img")
+                if avatar_elem.count() > 0:
+                    src = avatar_elem.first.get_attribute("src")
+                    if src and not src.startswith("data:"):
+                        if src.startswith("//"): foto_cliente = f"https:{src}"
+                        elif src.startswith("/"): foto_cliente = f"https://www.99freelas.com.br{src}"
+                        else: foto_cliente = src
+                            
+            texto_bruto = page.inner_text("body")
+        except Exception as e:
+            logger.error(f"Erro ao extrair URL {url}: {e}")
+            AgentActivityLogger.log(user_id, "Scout", f"Erro ao acessar URL", "erro", 1)
+            raise ValueError(f"Não foi possível acessar a URL: {e}")
+        finally:
+            browser.close()
+
+    if not texto_bruto:
+        raise ValueError("A página não retornou conteúdo legível.")
+        
+    vaga = {
+        "url": url,
+        "titulo": f"URL Customizada ({plataforma})",
+        "texto_bruto": texto_bruto,
+        "plataforma": plataforma,
+        "cliente_foto_url": foto_cliente
+    }
+    
+    perfil = repo_profile.get_profile(user_id)
+    valor_minimo = perfil.get("valor_projeto_minimo", 0) if perfil else 0
+    config_res = repo_profile.get_user_settings(user_id)
+    limite_automacao = 70
+    automacao_ativada = True
+    revisao_humana = True
+    if config_res:
+        modelos_proposta = config_res.get("modelos_proposta", {})
+        if isinstance(modelos_proposta, dict):
+            limite_automacao = modelos_proposta.get("limite_automacao", 70)
+            automacao_ativada = modelos_proposta.get("automacao_ativada", True)
+        revisao_humana = config_res.get("revisao_humana_obrigatoria", True)
+
+    res_ops = repo_op.get_opportunities(user_id)
+    urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
+    
+    processar_vagas_pipeline(user_id, [vaga], urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana)

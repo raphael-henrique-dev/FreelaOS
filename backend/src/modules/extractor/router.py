@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from backend.src.core.browser_manager import BrowserManager
-from backend.src.modules.extractor.service import executar_extracao
+from backend.src.modules.extractor.service import executar_extracao, executar_extracao_url
 from backend.src.modules.opportunities.repository import ProfileRepository
 
 repo_profile = ProfileRepository()
@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 class ExtractorRequest(BaseModel):
     user_id: str
+
+class UrlExtractorRequest(BaseModel):
+    user_id: str
+    url: str
 
 active_autopilots = set()
 
@@ -86,6 +90,12 @@ def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks)
     BrowserManager.clear_cancelled(req.user_id)
     background_tasks.add_task(executar_extracao, req.user_id)
     return {"mensagem": "Extrator disparado! Ele varrerá a web em segundo plano."}
+
+@router.post("/api/extractor/run-url")
+def trigger_url_extraction(req: UrlExtractorRequest, background_tasks: BackgroundTasks):
+    BrowserManager.clear_cancelled(req.user_id)
+    background_tasks.add_task(executar_extracao_url, req.user_id, req.url)
+    return {"mensagem": "Extração de URL iniciada! Ela será processada em background."}
 
 @router.post("/api/autopilot/check")
 async def check_autopilot(req: ExtractorRequest):

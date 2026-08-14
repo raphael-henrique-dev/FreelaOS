@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "@/core/api";
-import { Filter, Search, Sparkles, Loader2, Trash2 } from "lucide-react";
+import { Filter, Search, Sparkles, Loader2, Trash2, Link as LinkIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -111,6 +111,7 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
   });
   
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isExtractingUrl, setIsExtractingUrl] = useState(false);
   const queryClient = useQueryClient();
   const { mutateAsync: updateOportunidade } = useUpdateOportunidade();
 
@@ -156,6 +157,27 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
     }
   }
 
+  async function handleBuscarPorUrl(url: string) {
+    if (!url.trim()) return;
+    try {
+      setIsExtractingUrl(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.warning("Você precisa estar logado!");
+        return;
+      }
+      
+      const res = await api.post("/api/extractor/run-url", { user_id: session.user.id, url: url.trim() });
+      if (res.data) {
+        toast.success("URL enviada para extração! O Scout está analisando.");
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || "Falha de conexão com a API.");
+    } finally {
+      setIsExtractingUrl(false);
+    }
+  }
+
   async function handleWipeAll() {
     if (!confirm(" [WARNING] Deseja realmente APAGAR TODAS as oportunidades? Essa ação não pode ser desfeita.")) return;
     try {
@@ -195,7 +217,9 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
           <OpActions 
             handleWipeAll={handleWipeAll}
             handleNovaBusca={handleNovaBusca}
+            handleBuscarPorUrl={handleBuscarPorUrl}
             isExtracting={isExtracting}
+            isExtractingUrl={isExtractingUrl}
             filterStatuses={filterStatuses}
             setFilterStatuses={setFilterStatuses}
             filterPlatforms={filterPlatforms}
@@ -266,11 +290,14 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
 }
 
 function OpActions({ 
-  handleWipeAll, handleNovaBusca, isExtracting, 
+  handleWipeAll, handleNovaBusca, handleBuscarPorUrl, isExtracting, isExtractingUrl,
   filterStatuses, setFilterStatuses, 
   filterPlatforms, setFilterPlatforms, 
   filterMinScore, setFilterMinScore 
 }: any) {
+  const [urlInput, setUrlInput] = useState("");
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
   return (
     <>
       <Popover>
@@ -350,6 +377,43 @@ function OpActions({
       >
         <Trash2 className="mr-2 h-4 w-4" /> APAGAR todas oportunidades
       </Button>
+
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" disabled={isExtractingUrl} className="border-border hover:bg-muted/50">
+            {isExtractingUrl ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+            {isExtractingUrl ? "Analisando..." : "Buscar por URL"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-4 shadow-xl border-border/60 bg-card/95 backdrop-blur" align="end">
+          <div className="space-y-3">
+            <h4 className="font-medium leading-none">Analisar Vaga Específica</h4>
+            <p className="text-xs text-muted-foreground">
+              Cole o link da oportunidade (99Freelas ou Workana) e a inteligência fará o resto.
+            </p>
+            <div className="flex gap-2 mt-2">
+              <Input 
+                placeholder="https://..." 
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                className="h-8 text-xs border-border/50 bg-background/50"
+              />
+              <Button 
+                size="sm" 
+                className="h-8 px-3 text-xs" 
+                disabled={!urlInput.trim()}
+                onClick={() => {
+                  handleBuscarPorUrl(urlInput);
+                  setUrlInput("");
+                  setPopoverOpen(false);
+                }}
+              >
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
       <Button 
         size="sm" 
         className="bg-gradient-primary text-primary-foreground"
