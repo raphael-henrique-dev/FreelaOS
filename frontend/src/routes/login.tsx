@@ -159,7 +159,7 @@ function Login() {
         })
         if (error) throw error
         if (data.session) {
-          toast.success('Conta criada! Bem-vindo ao FreelaOS.')
+          toast.success('Bem-vindo ao FreelaOS! Finalize a criação da sua conta.')
           navigate({ to: '/onboarding' })
         } else if (data.user) {
           toast.success('Conta criada! Por favor, verifique seu e-mail.')
@@ -208,7 +208,7 @@ function Login() {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
       {/* Container Principal Split Screen */}
-      <div className="relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+      <div className="relative z-10 w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         
         {/* LADO ESQUERDO: Showcase Visual dos Agentes (Desktop) */}
         <div className="hidden lg:flex lg:col-span-6 flex-col justify-between rounded-2xl border border-border/40 bg-card/20 p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
@@ -218,10 +218,10 @@ function Login() {
           {/* Topo do Showcase */}
           <div className="space-y-3 relative z-10">
             <h2 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
-              Sua equipe autônoma de prospecção e fechamento.
+              Sua equipe autônoma de prospecção.
             </h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              O FreelaOS opera 24/7 varrendo plataformas, calculando notas de corte e redigindo propostas de alto impacto para você fechar mais contratos.
+              O FreelaOS opera 24/7 varrendo plataformas, calculando compatibilidade e redigindo propostas de alto impacto para você fechar mais projetos com menos esforço.
             </p>
           </div>
 
@@ -252,7 +252,7 @@ function Login() {
                   <p className="text-xs font-semibold text-foreground">Analista IA</p>
                   <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">Score Fit 0-100</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">Cruza a vaga com suas skills e descarta projetos fora do seu perfil.</p>
+                <p className="text-[11px] text-muted-foreground truncate">Recomenda apenas o que for aderente ao seu perfil.</p>
               </div>
             </div>
 
@@ -266,7 +266,7 @@ function Login() {
                   <p className="text-xs font-semibold text-foreground">Redator IA</p>
                   <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Copy Persuasiva</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">Gera propostas altamente personalizadas alinhadas ao seu tom de voz.</p>
+                <p className="text-[11px] text-muted-foreground truncate">Gera propostas comerciais altamente personalizadas.</p>
               </div>
             </div>
 

@@ -82,6 +82,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
   const [habilidades, setHabilidades] = useState<string[]>(perfil.habilidades || []);
   const [novaHabilidade, setNovaHabilidade] = useState("");
   const [senioridade, setSenioridade] = useState(perfil.senioridade || "Pleno");
+  const [areaAtuacao, setAreaAtuacao] = useState(perfil.area_atuacao || "Desenvolvimento e TI");
 
   // Pricing & Languages
   const [idiomas, setIdiomas] = useState<{idioma: string, nivel: string}[]>(perfil.idiomas || []);
@@ -218,7 +219,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
     await saveConfig({
       userId,
       perfilPayload: {
-        nome, cidade, fuso_horario: fuso, bio, habilidades, senioridade, idiomas,
+        nome, cidade, fuso_horario: fuso, bio, habilidades, senioridade, idiomas, area_atuacao: areaAtuacao,
         valor_hora_minimo: valorHora, valor_projeto_minimo: valorProjeto, moeda_base: moedaBase
       },
       configPayload: {
@@ -386,7 +387,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 value={bio}
                 onChange={e => setBio(e.target.value)}
                 placeholder="Conte um pouco sobre a sua experiência e seu foco de trabalho..."
-                className="mt-1 min-h-[100px] border-border/50 bg-background/40"
+                className="mt-1 min-h-[540px] border-border/50 bg-background/40"
               />
             </div>
           </CardContent>
@@ -420,6 +421,20 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 placeholder="Digite uma stack e aperte Enter..." 
                 className="mt-3 border-border/50 bg-background/40" 
               />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Área de Atuação</Label>
+              <select 
+                value={areaAtuacao} 
+                onChange={e => setAreaAtuacao(e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-md border border-input bg-background/40 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="Desenvolvimento e TI">Desenvolvimento e TI</option>
+                <option value="Design e Multimedia">Design e Multimedia</option>
+                <option value="Escrita e Tradução">Escrita e Tradução</option>
+                <option value="Marketing e Vendas">Marketing e Vendas</option>
+                <option value="Suporte Administrativo">Suporte Administrativo</option>
+              </select>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Senioridade Atual</Label>

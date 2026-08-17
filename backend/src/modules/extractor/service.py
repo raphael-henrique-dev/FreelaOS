@@ -55,12 +55,12 @@ def executar_extracao(user_id: str):
     if config_res and config_res.get("revisao_humana_obrigatoria") is not None:
         revisao_humana = config_res.get("revisao_humana_obrigatoria")
     
-    buscas = habilidades if len(habilidades) > 0 else ["desenvolvimento-web"]
+    area_atuacao = perfil.get("area_atuacao", "Desenvolvimento e TI") if perfil else "Desenvolvimento e TI"
     
     vagas_extraidas = []
     
     from backend.src.core.activity_logger import AgentActivityLogger
-    AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1)
+    AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas na área: " + area_atuacao, "processando", 1)
     
     res_ops = repo_op.get_opportunities(user_id)
     urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
@@ -71,7 +71,7 @@ def executar_extracao(user_id: str):
             from backend.src.modules.opportunities.freelas99_crawler import Freelas99Crawler
             AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "99Freelas"})
             logger.info("Iniciando crawler do 99Freelas...")
-            vagas_99 = Freelas99Crawler.executar(user_id, buscas, ignorar_exclusivos, urls_existentes)
+            vagas_99 = Freelas99Crawler.executar(user_id, area_atuacao, ignorar_exclusivos, urls_existentes)
             vagas_extraidas.extend(vagas_99)
         except Exception as e:
             if BrowserManager.is_cancelled(user_id):
@@ -90,7 +90,7 @@ def executar_extracao(user_id: str):
             from backend.src.modules.opportunities.workana_crawler import WorkanaCrawler
             AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "Workana"})
             logger.info("Iniciando crawler da Workana...")
-            vagas_wk = WorkanaCrawler.executar(user_id, buscas, limit=3)
+            vagas_wk = WorkanaCrawler.executar(user_id, area_atuacao, limit=3)
             vagas_extraidas.extend(vagas_wk)
         except Exception as e:
             if BrowserManager.is_cancelled(user_id):

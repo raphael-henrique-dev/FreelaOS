@@ -132,15 +132,26 @@ def generate_json(prompt: str, provedor: str = "gemini", max_retries: int = 3, f
                     
     if not texto_resposta:
         raise ValueError("Resposta vazia retornada pelo LLM.")
-        
     clean_json = texto_resposta.replace("```json", "").replace("```", "").strip()
     
-    # Auto-fix para JSONs truncados
-    if not clean_json.endswith("}"):
-        clean_json += "\n}"
+    # Previne quebra se o modelo esquecer a primeira chave
+    if not clean_json.startswith("{") and "{" in clean_json:
+        clean_json = clean_json[clean_json.find("{"):]
         
     try:
-        return json.loads(clean_json)
+        # raw_decode lê a string e para no momento em que um objeto JSON válido é concluído,
+        # ignorando com perfeição qualquer "lixo" (como chaves extras) que vier depois.
+        obj, idx = json.decoder.JSONDecoder().raw_decode(clean_json)
+        return obj
     except json.JSONDecodeError as e:
+        # Tenta uma última salvação caso o JSON esteja cortado no final
+        if "Unterminated string" in str(e) or "Expecting" in str(e):
+            clean_json += '"}' if clean_json.endswith('"') else '}'
+            try:
+                obj, idx = json.decoder.JSONDecoder().raw_decode(clean_json)
+                return obj
+            except:
+                pass
+                
         logger.error(f"Erro ao parsear JSON do LLM: {clean_json}")
         raise ValueError(f"LLM não retornou um JSON válido. Erro: {str(e)}")
