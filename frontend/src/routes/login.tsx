@@ -159,7 +159,7 @@ function Login() {
         })
         if (error) throw error
         if (data.session) {
-          toast.success('Bem-vindo ao FreelaOS! Finalize a criação da sua conta.')
+          toast.success('Olá! Finalize a criação da sua conta para continuar.')
           navigate({ to: '/onboarding' })
         } else if (data.user) {
           toast.success('Conta criada! Por favor, verifique seu e-mail.')

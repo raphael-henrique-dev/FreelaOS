@@ -139,19 +139,12 @@ def generate_json(prompt: str, provedor: str = "gemini", max_retries: int = 3, f
         clean_json = clean_json[clean_json.find("{"):]
         
     try:
-        # raw_decode lê a string e para no momento em que um objeto JSON válido é concluído,
-        # ignorando com perfeição qualquer "lixo" (como chaves extras) que vier depois.
-        obj, idx = json.decoder.JSONDecoder().raw_decode(clean_json)
-        return obj
-    except json.JSONDecodeError as e:
-        # Tenta uma última salvação caso o JSON esteja cortado no final
-        if "Unterminated string" in str(e) or "Expecting" in str(e):
-            clean_json += '"}' if clean_json.endswith('"') else '}'
-            try:
-                obj, idx = json.decoder.JSONDecoder().raw_decode(clean_json)
-                return obj
-            except:
-                pass
-                
-        logger.error(f"Erro ao parsear JSON do LLM: {clean_json}")
+        import json_repair
+        # Usa json_repair para consertar má formatação agressiva (como strings multilinhas, aspas soltas, vírgulas faltando)
+        obj = json_repair.repair_json(clean_json, return_objects=True)
+        if obj:
+            return obj
+        raise ValueError("O JSON retornado estava completamente destruído e não pôde ser salvo.")
+    except Exception as e:
+        logger.error(f"Erro ao parsear JSON do LLM com json_repair: {clean_json}")
         raise ValueError(f"LLM não retornou um JSON válido. Erro: {str(e)}")
