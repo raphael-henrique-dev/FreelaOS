@@ -90,7 +90,7 @@ def executar_extracao(user_id: str):
             from backend.src.modules.opportunities.workana_crawler import WorkanaCrawler
             AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "Workana"})
             logger.info("Iniciando crawler da Workana...")
-            vagas_wk = WorkanaCrawler.executar(user_id, area_atuacao, limit=3)
+            vagas_wk = WorkanaCrawler.executar(user_id, area_atuacao)
             vagas_extraidas.extend(vagas_wk)
         except Exception as e:
             if BrowserManager.is_cancelled(user_id):

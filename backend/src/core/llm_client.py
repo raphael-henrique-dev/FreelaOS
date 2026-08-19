@@ -21,9 +21,10 @@ def _call_provider(prompt: str, provedor: str, force_json: bool = False) -> str:
     if provedor == "groq":
         if not _groq_client: raise ValueError("GROQ_API_KEY não configurada no ambiente.")
         res = _groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="qwen/qwen3.6-27b",
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"} if force_json else None
+            response_format={"type": "json_object"} if force_json else None,
+            max_tokens=4096
         )
         return res.choices[0].message.content
         
@@ -81,7 +82,7 @@ def _get_active_llm(user_id: str) -> str:
                 return llm
     return "gemini"
 
-def generate_text(prompt: str, provedor: str = "gemini", max_retries: int = 3) -> str:
+def generate_text(prompt: str, provedor: str = "gemini-lite", max_retries: int = 3) -> str:
     """
     Chama a IA solicitando texto puro.
     Fallback Universal: Se Gemini falhar, tenta Groq. Se qualquer outro falhar, tenta Gemini.
@@ -104,7 +105,7 @@ def generate_text(prompt: str, provedor: str = "gemini", max_retries: int = 3) -
                     logger.error(f"[LLM ERROR] Ambos os provedores falharam. Erro: {fallback_err}")
                     raise Exception(f"Ambos os modelos falharam. Erro final: {fallback_err}")
 
-def generate_json(prompt: str, provedor: str = "gemini", max_retries: int = 3, force_json: bool = False) -> dict:
+def generate_json(prompt: str, provedor: str = "gemini-lite", max_retries: int = 3, force_json: bool = False) -> dict:
     """
     Chama a IA solicitando JSON.
     Fallback Universal: Se Gemini falhar, tenta Groq. Se qualquer outro falhar, tenta Gemini.

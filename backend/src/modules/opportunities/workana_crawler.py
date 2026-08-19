@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class WorkanaCrawler:
     @staticmethod
-    def executar(user_id: str, area_atuacao: str, limit: int = 3):
+    def executar(user_id: str, area_atuacao: str):
         if BrowserManager.is_cancelled(user_id):
             logger.info(f"[Workana] Execução cancelada antes de iniciar para {user_id}.")
             return []
@@ -49,29 +49,30 @@ class WorkanaCrawler:
                     }
                     
                     cat_slug = mapa_categorias.get(area_atuacao, "it-programming")
-                    url_alvo = f"https://www.workana.com/jobs?category={cat_slug}&language=pt"
-                        
-                    page.goto(url_alvo)
-                    
-                    try:
-                        page.wait_for_selector(".project-item", timeout=10000)
-                    except Exception:
-                        logger.info(f"[Workana] Nenhuma vaga encontrada para a área {area_atuacao}.")
-                        return []
-                        
-                    links_elements = page.locator(".project-item .project-title a")
-                    count = links_elements.count()
-                    logger.info(f"[Workana] Encontradas {count} vagas para {area_atuacao}.")
                     
                     links_data = []
-                    for i in range(count):
-                        elem = links_elements.nth(i)
-                        href = elem.get_attribute("href")
-                        titulo = elem.inner_text().strip() or href
-                        if href:
-                            if not href.startswith("http"):
-                                href = "https://www.workana.com" + href
-                            links_data.append({"url": href, "titulo": titulo})
+                    for page_num in range(1, (2 + 1)):  # Ajuste para pegar 2 páginas
+                        url_alvo = f"https://www.workana.com/jobs?category={cat_slug}&language=pt&page={page_num}"
+                        page.goto(url_alvo)
+                        
+                        try:
+                            page.wait_for_selector(".project-item", timeout=10000)
+                        except Exception:
+                            logger.info(f"[Workana] Nenhuma vaga encontrada para a área {area_atuacao} na página {page_num}.")
+                            continue
+                            
+                        links_elements = page.locator(".project-item .project-title a")
+                        count = links_elements.count()
+                        logger.info(f"[Workana] Encontradas {count} vagas para {area_atuacao} na página {page_num}.")
+                        
+                        for i in range(count):
+                            elem = links_elements.nth(i)
+                            href = elem.get_attribute("href")
+                            titulo = elem.inner_text().strip() or href
+                            if href:
+                                if not href.startswith("http"):
+                                    href = "https://www.workana.com" + href
+                                links_data.append({"url": href, "titulo": titulo})
                     
                     # Deduplicate based on URL while preserving order
                     seen = set()
@@ -80,7 +81,6 @@ class WorkanaCrawler:
                         if item["url"] not in seen:
                             seen.add(item["url"])
                             unique_links.append(item)
-                    unique_links = unique_links[:limit]
                     
                     for item in unique_links:
                         if BrowserManager.is_cancelled(user_id):

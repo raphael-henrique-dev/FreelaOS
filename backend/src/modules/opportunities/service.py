@@ -40,7 +40,7 @@ class AnalistaService:
         INSTRUÇÕES DA ANÁLISE:
         Calcule uma nota de 0 a 100 considerando:
         1. Fit Técnico: A Stack bate com as habilidades do desenvolvedor?
-        2. Fit Financeiro: O orçamento está de acordo com o mínimo que ele aceita?
+        2. Fit Financeiro: O orçamento está de acordo com o mínimo que ele aceita? (observação importante: se o orçamento estiver definido como 0, considere que o cliente não informou o valor e não penalize o score)
         3. Fit de Experiência: O desafio condiz com a senioridade dele?
         4. Fit Cultural/Potencial: Leia a biografia do desenvolvedor (caso exista) e busque habilidades, experiências ou características que possam aproximá-lo da vaga
         
@@ -143,9 +143,9 @@ Orçamento: R$ {vaga.get('orcamento')}
 }}
 """
         active_llm = _get_active_llm(user_id)                   ## para o redator o Gemini se mostrou melhor
-        dados_ia = generate_json(sys_prompt, force_json=True)
+        dados_ia = generate_json(sys_prompt, provedor=active_llm, force_json=True)
         
-        texto_proposta = dados_ia.get("texto_proposta", "")
+        texto_proposta = dados_ia.get("texto_proposta", "") 
         valor_proposta = dados_ia.get("valor", 0)
         prazo_proposta = dados_ia.get("prazo", "")
         
