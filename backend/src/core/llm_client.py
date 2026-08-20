@@ -105,7 +105,7 @@ def generate_text(prompt: str, provedor: str = "gemini-lite", max_retries: int =
                     logger.error(f"[LLM ERROR] Ambos os provedores falharam. Erro: {fallback_err}")
                     raise Exception(f"Ambos os modelos falharam. Erro final: {fallback_err}")
 
-def generate_json(prompt: str, provedor: str = "gemini-lite", max_retries: int = 3, force_json: bool = False) -> dict:
+def generate_json(prompt: str, provedor: str = "gemini-lite", max_retries: int = 3, force_json: bool = True) -> dict:
     """
     Chama a IA solicitando JSON.
     Fallback Universal: Se Gemini falhar, tenta Groq. Se qualquer outro falhar, tenta Gemini.
