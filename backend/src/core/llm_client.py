@@ -21,7 +21,7 @@ def _call_provider(prompt: str, provedor: str, force_json: bool = False) -> str:
     if provedor == "groq":
         if not _groq_client: raise ValueError("GROQ_API_KEY não configurada no ambiente.")
         res = _groq_client.chat.completions.create(
-            model="qwen/qwen3.6-27b",
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"} if force_json else None,
             max_tokens=4096
