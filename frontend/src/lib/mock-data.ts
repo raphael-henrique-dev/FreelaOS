@@ -104,10 +104,13 @@ export function statusVariant(status: string): "default" | "secondary" | "outlin
     case "Prospecção":
     case "Proposta enviada":
     case "Em negociação":
+    case "Aguardando resposta":
       return "secondary";
     case "Atrasado":
     case "Perdida":
       return "destructive";
+    case "Inativo":
+    case "Não contatado":
     default:
       return "outline";
   }

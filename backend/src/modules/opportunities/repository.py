@@ -51,6 +51,6 @@ class ClientRepository:
         return db.table("clientes").update(data).eq("id", client_id).execute()
 
     def get_clients(self, perfil_id: str):
-        res = db.table("clientes").select("*, oportunidades(id, titulo, status, valor_proposta)").eq("perfil_id", perfil_id).order("atualizado_em", desc=True).execute()
+        res = db.table("vw_clientes").select("*, oportunidades(id, titulo, status, valor_proposta)").eq("perfil_id", perfil_id).order("atualizado_em", desc=True).execute()
         return res.data
 

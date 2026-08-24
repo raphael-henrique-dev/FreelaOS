@@ -42,6 +42,7 @@ function ClientesPage() {
   const [open, setOpen] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInativos, setShowInativos] = useState(false);
 
   const current = clients.find((c) => c.id === open) ?? null;
 
@@ -67,7 +68,7 @@ function ClientesPage() {
           const ops = c.oportunidades || [];
           const validOps = ops.filter((o: any) => validStatuses.includes(o.status));
           
-          if (validOps.length === 0) return null;
+          if (validOps.length === 0 || c.status === "Não contatado") return null;
           
           const totalValue = validOps.reduce((sum: number, o: any) => sum + (o.valor_proposta || 0), 0);
           
@@ -82,7 +83,7 @@ function ClientesPage() {
             status: c.status || "Ativo",
             notes: "Anotações e acompanhamentos futuros serão exibidos aqui.",
             history: [
-              { date: new Date(c.criado_em).toLocaleDateString("pt-BR"), text: "Cliente prospectado e proposta enviada." }
+              { date: new Date(c.criado_em).toLocaleDateString("pt-BR"), text: "Cliente cadastrado no sistema." }
             ],
             rawProjects: validOps
           };
@@ -102,6 +103,15 @@ function ClientesPage() {
   return (
     <PageContainer>
       <PageHeader title="Clientes" description="Todo o relacionamento comercial em um só lugar, gerado a partir das propostas enviadas." />
+
+      <div className="flex justify-end mb-4 px-1">
+        <button 
+          onClick={() => setShowInativos(!showInativos)}
+          className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${showInativos ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50'}`}
+        >
+          {showInativos ? "Ocultar Inativos" : "Ver Inativos"}
+        </button>
+      </div>
 
       <Card className="border-border/60 bg-card/60">
         <CardContent className="overflow-x-auto p-0">
@@ -131,7 +141,7 @@ function ClientesPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {!loading && clients.map((c) => (
+              {!loading && clients.filter(c => showInativos ? c.status === "Inativo" : c.status !== "Inativo").map((c) => (
                 <TableRow key={c.id} className="cursor-pointer border-border/50 transition-colors hover:bg-muted/50" onClick={() => setOpen(c.id)}>
                   <TableCell>
                     <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import logging
 from google import genai
 from google.genai import types
+from backend.src.core import llm_client
 from backend.src.modules.assistant import tools as assistant_tools
 
 logger = logging.getLogger(__name__)
@@ -48,10 +49,12 @@ e gerenciar as oportunidades ativas.
 Sempre que o usuário pedir informações sobre propostas, faturamento, ou quiser alterar uma configuração, 
 USE AS SUAS FERRAMENTAS (Tools). Não invente dados.
 Responda de forma concisa, direta, mas cordial. Use formatação Markdown (negrito, listas) para deixar a leitura fácil."""
+
+        _active_llm = llm_client._get_active_llm() ## o modelo configurado pelo usuario. Atribua à `model` para usar
         
         # Cria a sessão de chat, que mantém o histórico em memória
         self.chat = self.client.chats.create(
-            model="gemini-3.1-flash-lite",
+            model="gemini-3.1-flash-lite", ## modelo mais rápido e barato, mas ainda com capacidade de AFC (Auto Function Calling)
             config=types.GenerateContentConfig(
                 system_instruction=sys_prompt,
                 tools=self.tools,
