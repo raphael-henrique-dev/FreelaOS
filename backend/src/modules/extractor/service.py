@@ -40,12 +40,14 @@ def executar_extracao(user_id: str):
     
     integracoes = {}
     limite_automacao = 70
+    limite_descarte = 30
     automacao_ativada = True
     if config_res:
         integracoes = config_res.get("integracoes", {})
         modelos_proposta = config_res.get("modelos_proposta", {})
         if isinstance(modelos_proposta, dict):
             limite_automacao = modelos_proposta.get("limite_automacao", 70)
+            limite_descarte = modelos_proposta.get("limite_descarte", 30)
             automacao_ativada = modelos_proposta.get("automacao_ativada", True)
     
     config_99 = integracoes.get("99freelas", {})
@@ -104,9 +106,9 @@ def executar_extracao(user_id: str):
         return
 
     # 3. Pipeline Unificada de I.A. (Scout -> Analista -> Redator -> Sender)
-    processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana)
+    processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana, limite_descarte)
 
-def processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana):
+def processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana, limite_descarte):
     from backend.src.core.activity_logger import AgentActivityLogger
     novas_vagas = [v for v in vagas_extraidas if v.get("url") not in urls_existentes]
     total_novas = len(novas_vagas)
@@ -165,6 +167,12 @@ def processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_mi
                 score = analista_res.get("score", 0)
                 
                 AgentActivityLogger.log(user_id, "Analista", f"Score de {score}% calculado para [{titulo}]", "sucesso" if score >= limite_automacao else "alerta", 2, {"vaga_id": vaga_id, "score": score, "titulo": titulo, "plataforma": plataforma})
+                
+                # VERIFICAÇÃO DE DESCARTE AUTOMÁTICO
+                if score < limite_descarte:
+                    logger.info(f"Vaga {vaga_id} ({titulo}) recebeu score {score}, que é menor que a nota de corte ({limite_descarte}). Descartando...")
+                    repo_op.update_opportunity(vaga_id, {"status": "Ignorada"})
+                    AgentActivityLogger.log(user_id, "Analista", f"Vaga ignorada automaticamente (Score {score} < {limite_descarte})", "sucesso", 2, {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma})
                 
                 if BrowserManager.is_cancelled(user_id):
                     return
@@ -287,12 +295,14 @@ def executar_extracao_url(user_id: str, url: str):
     valor_minimo = perfil.get("valor_projeto_minimo", 0) if perfil else 0
     config_res = repo_profile.get_user_settings(user_id)
     limite_automacao = 70
+    limite_descarte = 30
     automacao_ativada = True
     revisao_humana = True
     if config_res:
         modelos_proposta = config_res.get("modelos_proposta", {})
         if isinstance(modelos_proposta, dict):
             limite_automacao = modelos_proposta.get("limite_automacao", 70)
+            limite_descarte = modelos_proposta.get("limite_descarte", 30)
             automacao_ativada = modelos_proposta.get("automacao_ativada", True)
         revisao_humana = config_res.get("revisao_humana_obrigatoria", True)
 

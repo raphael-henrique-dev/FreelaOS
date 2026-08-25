@@ -106,8 +106,9 @@ function ConfigPage({ initialData }: { initialData: any }) {
   const [integracoes, setIntegracoes] = useState(initialIntegrations);
   
   const [modeloAtivo, setModeloAtivo] = useState(Array.isArray(config.modelos_proposta) ? "padrao" : (config.modelos_proposta?.ativo || "padrao"));
-  const [promptPersonalizado, setPromptPersonalizado] = useState(config.modelos_proposta?.personalizado_prompt || "");
+  const [promptPersonalizado, setPromptPersonalizado] = useState(config.modelos_proposta?.personalizado_prompt ?? "");
   const [limiteAutomacao, setLimiteAutomacao] = useState(config.modelos_proposta?.limite_automacao ?? 70);
+  const [limiteDescarte, setLimiteDescarte] = useState(config.modelos_proposta?.limite_descarte ?? 30);
   const [automacaoAtivada, setAutomacaoAtivada] = useState(config.modelos_proposta?.automacao_ativada ?? true);
   const [revisaoHumana, setRevisaoHumana] = useState(config.revisao_humana_obrigatoria ?? true);
   const [intervalHours, setIntervalHours] = useState(config.interval_hours ?? 3);
@@ -224,7 +225,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
       },
       configPayload: {
         integracoes: integracoesJson,
-        modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada },
+        modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada, limite_descarte: limiteDescarte },
         revisao_humana_obrigatoria: revisaoHumana,
         interval_hours: intervalHours
       }
@@ -648,6 +649,28 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 onChange={(e) => setLimiteAutomacao(parseInt(e.target.value))}
                 disabled={!automacaoAtivada}
                 className={`w-full accent-primary ${!automacaoAtivada ? 'opacity-50 cursor-not-allowed' : ''}`}
+              />
+            </div>
+
+            <div className="pt-4 border-t border-border/50">
+              <Label className="text-xs text-muted-foreground flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span>Descarte Automático (Analista IA)</span>
+                </div>
+                <span className="font-mono px-2 py-0.5 rounded text-xs transition-colors bg-primary/10 text-primary">
+                  {limiteDescarte} / 100
+                </span>
+              </Label>
+              <p className="text-[11px] text-muted-foreground mb-3 mt-2">
+                Qualquer vaga cujo Score calculado seja MENOR que este valor será imediatamente descartada e enviada para a lixeira (Ignorada) (0 para desligar).
+              </p>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={limiteDescarte} 
+                onChange={(e) => setLimiteDescarte(parseInt(e.target.value))}
+                className="w-full accent-primary"
               />
             </div>
 
