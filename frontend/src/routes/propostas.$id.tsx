@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Save, Send, Sparkles, RefreshCw, ExternalLink, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -64,6 +64,7 @@ function PropostaEditor() {
   const [sending, setSending] = useState(false);
   const [modelo, setModelo] = useState("");
   const [isSentLocal, setIsSentLocal] = useState(false);
+  const hasFetched = useRef(false);
   const router = useRouter();
   
   const isSent = (op.status === "Proposta enviada") || isSentLocal;
@@ -147,7 +148,10 @@ function PropostaEditor() {
       setPrazo(op.prazo_proposta);
       setModelo("Background Automático");
     } else {
-      fetchRedatorAPI(false);
+      if (!hasFetched.current) {
+        hasFetched.current = true;
+        fetchRedatorAPI(false);
+      }
     }
   }, [op.id]);
 

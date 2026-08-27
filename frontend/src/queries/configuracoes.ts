@@ -10,6 +10,7 @@ export const defaultIntegrations = [
   { id: "claude", name: "Claude", desc: "Motor alternativo para propostas longas", enabled: false },
   { id: "groq", name: "Groq", desc: "Motor alternativo do Groq. Rápido, Eficiente e Gratuito.", enabled: false },
   { id: "gemini", name: "Google Gemini", desc: "Análise multimodal de briefings", enabled: false },
+  { id: "nvidia", name: "NVIDIA NIM", desc: "Acesso gratuito aos modelos gigantes open-source", enabled: false },
 ];
 
 export function useConfiguracoesData() {

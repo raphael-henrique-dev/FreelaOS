@@ -136,15 +136,15 @@ Orçamento: R$ {vaga.get('orcamento')}
 6. Assine no final com o nome do profissional.
 7. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
 8. Não esqueça de incluir quebras de linha entre parágrafos.
-9. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA E NADA MAIS (sem formatação markdown ```json):
+9. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA (EXEMPLO) E NADA MAIS (sem formatação markdown ```json):
 {{
-  "texto_proposta": "Olá 'nome do cliente'! ...",
+  "texto_proposta": "Olá 'nome do cliente'! Tudo bem? (quebra de linha) Me chamo ´primeiro nome do desenvolvedor´, sou desenvolvedor... [...] -Termine o texto com:- Atenciosamente, ´primeiro nome do desenvolvedor´",
   "valor": 1500,
   "prazo": "7 dias"
 }}
 """
-        active_llm = _get_active_llm(user_id)                   ## para o redator o Gemini se mostrou melhor
-        dados_ia = generate_json(sys_prompt, provedor=active_llm, force_json=True)
+        active_llm = _get_active_llm(user_id)                   ## para o redator modelos especificios se mostraram mais eficientes - TESTES SENDO REALIZADOS
+        dados_ia = generate_json(sys_prompt, provedor="nvidia", force_json=True)
         
         texto_proposta = dados_ia.get("texto_proposta", "") 
         valor_proposta = dados_ia.get("valor", 0)

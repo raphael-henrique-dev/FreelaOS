@@ -247,7 +247,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
   };
 
   function toggleIntegration(id: string, checked: boolean) {
-    const llmModels = ['openai', 'claude', 'groq', 'gemini'];
+    const llmModels = ['openai', 'claude', 'groq', 'gemini', 'nvidia'];
     
     setIntegracoes(prev => {
       if (checked && llmModels.includes(id)) {

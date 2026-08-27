@@ -10,11 +10,13 @@ logger = logging.getLogger(__name__)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY") ## roteamento de modelos gratuitos pela nvidia vim
 # CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY") # Placeholder para futura implementação nativa
 
 _gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 _groq_client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1") if GROQ_API_KEY else None
 _openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+_nvidia_client = OpenAI(api_key=NVIDIA_API_KEY, base_url="https://integrate.api.nvidia.com/v1") if NVIDIA_API_KEY else None
 
 def _call_provider(prompt: str, provedor: str, force_json: bool = False) -> str:
     """Função interna para chamar o provedor específico."""
@@ -34,6 +36,16 @@ def _call_provider(prompt: str, provedor: str, force_json: bool = False) -> str:
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"} if force_json else None
+        )
+        return res.choices[0].message.content
+        
+    elif provedor == "nvidia":
+        if not _nvidia_client: raise ValueError("NVIDIA_API_KEY não configurada no ambiente.")
+        res = _nvidia_client.chat.completions.create(
+            model="deepseek-ai/deepseek-v4-flash-0731",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"} if force_json else None,
+            max_tokens=4096
         )
         return res.choices[0].message.content
     elif provedor == "gemini-lite":
@@ -74,7 +86,7 @@ def _get_active_llm(user_id: str) -> str:
     config = profile_repo.get_user_settings(user_id)
     if config and config.get("integracoes"):
         integracoes = config["integracoes"]
-        for llm in ["groq", "openai", "claude", "gemini"]:
+        for llm in ["groq", "openai", "claude", "gemini", "nvidia"]:
             val = integracoes.get(llm)
             if isinstance(val, dict) and val.get("enabled") is True:
                 return llm
