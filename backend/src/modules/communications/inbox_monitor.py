@@ -107,7 +107,7 @@ async def check_unread_messages(user_id: str):
                 
                 # Link da conversa (o 99freelas usa o data-id no li)
                 conversa_id = await node.get_attribute("data-id")
-                url_origem = f"https://www.99freelas.com.br/messages/unread/{conversa_id}" if conversa_id else ""
+                url_origem = f"https://www.99freelas.com.br/messages/inbox/{conversa_id}" if conversa_id else ""
 
                 # 1. EVITAR DUPLICIDADE
                 if msg_repo.check_duplicate(user_id, remetente, url_origem, texto):
