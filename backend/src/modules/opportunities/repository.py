@@ -54,3 +54,16 @@ class ClientRepository:
         res = db.table("vw_clientes").select("*, oportunidades(id, titulo, status, valor_proposta)").eq("perfil_id", perfil_id).order("atualizado_em", desc=True).execute()
         return res.data
 
+
+    def delete_inactive_clients(self, perfil_id: str):
+        inativos_res = db.table("vw_clientes").select("id").eq("perfil_id", perfil_id).eq("status", "Inativo").execute()
+        if not inativos_res.data:
+            return {"status": "success", "deleted": 0}
+            
+        ids = [c["id"] for c in inativos_res.data]
+        
+        # Remove oportunidades relacionadas primeiro para evitar FK constraints, caso nao tenha ON DELETE CASCADE
+        db.table("oportunidades").delete().in_("cliente_id", ids).execute()
+        
+        res = db.table("clientes").delete().in_("id", ids).execute()
+        return {"status": "success", "deleted": len(ids)}

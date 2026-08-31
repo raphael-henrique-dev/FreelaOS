@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,8 +44,28 @@ function ClientesPage() {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInativos, setShowInativos] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const current = clients.find((c) => c.id === open) ?? null;
+
+
+  const handleDeleteInactive = async () => {
+    if (!confirm("Tem certeza que deseja apagar permanentemente os clientes inativos e suas oportunidades?")) return;
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return;
+      await api.delete("/api/clients/inactive", { params: { perfil_id: session.user.id } });
+      setClients(prev => prev.filter(c => c.status !== "Inativo"));
+      setShowInativos(false);
+      toast?.success ? toast.success("Clientes inativos apagados com sucesso!") : alert("Clientes inativos apagados com sucesso!");
+    } catch (err) {
+      console.error(err);
+      toast?.error ? toast.error("Erro ao apagar clientes.") : alert("Erro ao apagar clientes.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchClients() {
@@ -104,13 +125,24 @@ function ClientesPage() {
     <PageContainer>
       <PageHeader title="Clientes" description="Todo o relacionamento comercial em um só lugar, gerado a partir das propostas enviadas." />
 
-      <div className="flex justify-end mb-4 px-1">
+      <div className="flex justify-end gap-2 mb-4 px-1">
         <button 
           onClick={() => setShowInativos(!showInativos)}
           className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${showInativos ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50'}`}
         >
           {showInativos ? "Ocultar Inativos" : "Ver Inativos"}
         </button>
+
+        {showInativos && (
+          <button 
+            onClick={handleDeleteInactive}
+            disabled={isDeleting}
+            className="text-sm px-3 py-1.5 rounded-md border transition-colors bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 disabled:opacity-50"
+          >
+            <Trash className="inline-block mr-1 h-4 w-4" />
+            {isDeleting ? "Apagando..." : "Excluir Inativos"}
+          </button>
+        )}
       </div>
 
       <Card className="border-border/60 bg-card/60">

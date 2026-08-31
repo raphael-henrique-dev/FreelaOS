@@ -111,3 +111,10 @@ def get_profile(user_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+@router.delete("/api/clients/inactive")
+def delete_inactive_clients(perfil_id: str):
+    try:
+        ClientRepository().delete_inactive_clients(perfil_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

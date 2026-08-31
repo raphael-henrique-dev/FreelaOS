@@ -46,7 +46,7 @@ class SenderService:
                 page.goto(url_vaga, timeout=60000)
                 
                 # Verifica se a proposta já foi enviada (botão Melhorar Proposta)
-                btn_melhorar = page.locator("a:has-text('Melhorar proposta'), a:has-text('Melhorar Proposta')").first
+                btn_melhorar = page.locator("a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')").first
                 if btn_melhorar.count() > 0:
                     opp_repo.update_opportunity(vaga_id, {
                         "status": "Proposta enviada", 
@@ -54,7 +54,7 @@ class SenderService:
                     })
                     return {"status": "success", "message": "Aviso: Uma proposta já havia sido enviada anteriormente. O status foi atualizado."}
 
-                link_enviar = page.locator("a.btn.blue:has-text('Enviar proposta'), a:has-text('Enviar proposta')").first
+                link_enviar = page.locator("a.btn:has-text('Enviar proposta')").first
                 if link_enviar.count() > 0:
                     link_enviar.click()
                     page.wait_for_load_state("domcontentloaded", timeout=15000)
