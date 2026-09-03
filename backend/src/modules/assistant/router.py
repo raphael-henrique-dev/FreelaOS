@@ -1,3 +1,5 @@
+from fastapi import Depends
+from backend.src.core.auth import get_current_user, verify_user_ownership
 import os
 import json
 import asyncio
@@ -18,7 +20,7 @@ active_agents = {}
 from backend.src.core.llm_client import generate_text
 
 @router.post("/chat")
-async def assistant_chat(request: ChatRequest):
+async def assistant_chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         async def err():

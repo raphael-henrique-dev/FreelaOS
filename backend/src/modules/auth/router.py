@@ -42,6 +42,10 @@ def desconectar_99freelas(req: AuthRequest):
 
 @router.get("/api/auth/99freelas/status")
 def status_99freelas(user_id: str):
+    if user_id != current_user['user_id']:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
     try:
         is_connected = AuthService.status_99freelas(user_id)
         return {"status": "success", "connected": is_connected}
@@ -71,6 +75,10 @@ def desconectar_workana(req: AuthRequest):
 
 @router.get("/api/auth/workana/status")
 def status_workana(user_id: str):
+    if user_id != current_user['user_id']:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
     try:
         is_connected = AuthService.status_workana(user_id)
         return {"status": "success", "connected": is_connected}

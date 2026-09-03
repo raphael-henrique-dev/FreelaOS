@@ -1,5 +1,6 @@
 import axios from "axios";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL === "/" ? "" : (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"),
@@ -7,6 +8,15 @@ export const api = axios.create({
   headers: {
     "ngrok-skip-browser-warning": "69420"
   }
+});
+
+
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
 });
 
 api.interceptors.response.use(
