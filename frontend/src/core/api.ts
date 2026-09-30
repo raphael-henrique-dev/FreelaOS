@@ -3,6 +3,9 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 export const api = axios.create({
+  // Configuração da baseURL para o ambiente de desenvolvimento ou produção. Se for produção na nuvem a variavel de ambiente
+  // precisa ser criada na instância do servidor. Se for produção local, a variável de ambiente precisa ser criada no arquivo .env local.
+  // Se for ambiente de desenvolvimento, o fallback aponta o back diretamente para o localhost na porta 8000, que é a porta padrão do backend. 
   baseURL: import.meta.env.VITE_API_URL === "/" ? "" : (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"),
   timeout: 180000,
   headers: {
