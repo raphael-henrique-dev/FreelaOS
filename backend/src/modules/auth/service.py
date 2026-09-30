@@ -32,38 +32,93 @@ class AuthService:
             pass
 
     @staticmethod
-    def conectar_99freelas(user_id: str) -> bool:
+    def conectar_99freelas(user_id: str, cookies_json: str = None) -> bool:
         session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "99freelas")
         os.makedirs(session_dir, exist_ok=True)
         
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch_persistent_context(
-                    user_data_dir=session_dir,
-                    headless=False,
-                    viewport={"width": 1280, "height": 720},
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
-                page = browser.new_page()
-                page.goto("https://www.99freelas.com.br/login")
+        if cookies_json:
+            try:
+                import json
+                raw_cookies = json.loads(cookies_json)
                 
-                try:
-                    for _ in range(120):
-                        if "login" not in page.url:
-                            break
-                        page.wait_for_timeout(1000)
+                if not isinstance(raw_cookies, list):
+                    if "cookies" in raw_cookies:
+                        raw_cookies = raw_cookies["cookies"]
                     else:
-                        raise Exception("Timeout")
-                    
-                    page.wait_for_timeout(3000)
-                    success = True
-                except Exception:
-                    success = False
+                        raise ValueError("Formato de cookie inválido.")
                 
-                browser.close()
-                return success
-        except Exception as e:
-            raise ValueError(str(e))
+                playwright_cookies = []
+                for c in raw_cookies:
+                    raw_same_site = str(c.get("sameSite", "Lax")).lower()
+                    if raw_same_site in ["no_restriction", "none"]:
+                        same_site = "None"
+                    elif raw_same_site == "strict":
+                        same_site = "Strict"
+                    else:
+                        same_site = "Lax"
+                        
+                    cookie = {
+                        "name": c.get("name", ""),
+                        "value": c.get("value", ""),
+                        "domain": c.get("domain", ""),
+                        "path": c.get("path", "/"),
+                        "httpOnly": c.get("httpOnly", False),
+                        "secure": c.get("secure", False),
+                        "sameSite": same_site
+                    }
+                    if "expirationDate" in c:
+                        cookie["expires"] = float(c["expirationDate"])
+                    
+                    playwright_cookies.append(cookie)
+                
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as p:
+                    browser = p.chromium.launch_persistent_context(
+                        user_data_dir=session_dir,
+                        headless=True,
+                        args=["--disable-blink-features=AutomationControlled"]
+                    )
+                    browser.add_cookies(playwright_cookies)
+                    browser.close()
+                    
+                return True
+            except json.JSONDecodeError:
+                raise ValueError("O texto colado não é um JSON válido. Exporte usando uma extensão como EditThisCookie.")
+            except Exception as e:
+                raise ValueError(f"Falha ao salvar cookies: {str(e)}")
+        else:
+            # Fluxo Original: Janela interativa
+            try:
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as p:
+                    browser = p.chromium.launch_persistent_context(
+                        user_data_dir=session_dir,
+                        headless=False,
+                        viewport={"width": 1280, "height": 720},
+                        args=["--disable-blink-features=AutomationControlled"]
+                    )
+                    page = browser.new_page()
+                    page.goto("https://www.99freelas.com.br/login")
+                    
+                    try:
+                        for _ in range(120):
+                            if "login" not in page.url:
+                                break
+                            page.wait_for_timeout(1000)
+                        else:
+                            raise Exception("Timeout")
+                        
+                        page.wait_for_timeout(3000)
+                        success = True
+                    except Exception:
+                        success = False
+                    
+                    browser.close()
+                    return success
+            except ValueError as e:
+                raise ValueError(str(e))
+            except Exception as e:
+                raise ValueError(f"Falha ao salvar cookies: {str(e)}")
 
     @staticmethod
     def desconectar_99freelas(user_id: str):
@@ -98,39 +153,93 @@ class AuthService:
             return False
 
     @staticmethod
-    def conectar_workana(user_id: str) -> bool:
+    def conectar_workana(user_id: str, cookies_json: str = None) -> bool:
         session_dir = os.path.join(os.getcwd(), "playwright_sessions", user_id, "workana")
         os.makedirs(session_dir, exist_ok=True)
         
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch_persistent_context(
-                    user_data_dir=session_dir,
-                    headless=False,
-                    viewport={"width": 1280, "height": 720},
-                    args=["--disable-blink-features=AutomationControlled"]
-                )
-                page = browser.new_page()
-                page.goto("https://www.workana.com/login")
+        if cookies_json:
+            try:
+                import json
+                raw_cookies = json.loads(cookies_json)
                 
-                try:
-                    for _ in range(120):
-                        # Se caiu na página de dashboard, assumimos sucesso
-                        if "dashboard" in page.url:
-                            break
-                        page.wait_for_timeout(1000)
+                if not isinstance(raw_cookies, list):
+                    if "cookies" in raw_cookies:
+                        raw_cookies = raw_cookies["cookies"]
                     else:
-                        raise Exception("Timeout")
-                    
-                    page.wait_for_timeout(3000)
-                    success = True
-                except Exception:
-                    success = False
+                        raise ValueError("Formato de cookie inválido.")
                 
-                browser.close()
-                return success
-        except Exception as e:
-            raise ValueError(str(e))
+                playwright_cookies = []
+                for c in raw_cookies:
+                    raw_same_site = str(c.get("sameSite", "Lax")).lower()
+                    if raw_same_site in ["no_restriction", "none"]:
+                        same_site = "None"
+                    elif raw_same_site == "strict":
+                        same_site = "Strict"
+                    else:
+                        same_site = "Lax"
+                        
+                    cookie = {
+                        "name": c.get("name", ""),
+                        "value": c.get("value", ""),
+                        "domain": c.get("domain", ""),
+                        "path": c.get("path", "/"),
+                        "httpOnly": c.get("httpOnly", False),
+                        "secure": c.get("secure", False),
+                        "sameSite": same_site
+                    }
+                    if "expirationDate" in c:
+                        cookie["expires"] = float(c["expirationDate"])
+                    
+                    playwright_cookies.append(cookie)
+                
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as p:
+                    browser = p.chromium.launch_persistent_context(
+                        user_data_dir=session_dir,
+                        headless=True,
+                        args=["--disable-blink-features=AutomationControlled"]
+                    )
+                    browser.add_cookies(playwright_cookies)
+                    browser.close()
+                    
+                return True
+            except json.JSONDecodeError:
+                raise ValueError("O texto colado não é um JSON válido. Exporte usando uma extensão como EditThisCookie.")
+            except Exception as e:
+                raise ValueError(f"Falha ao salvar cookies: {str(e)}")
+        else:
+            # Fluxo Original: Janela interativa
+            try:
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as p:
+                    browser = p.chromium.launch_persistent_context(
+                        user_data_dir=session_dir,
+                        headless=False,
+                        viewport={"width": 1280, "height": 720},
+                        args=["--disable-blink-features=AutomationControlled"]
+                    )
+                    page = browser.new_page()
+                    page.goto("https://www.workana.com/login")
+                    
+                    try:
+                        for _ in range(120):
+                            if "dashboard" in page.url:
+                                break
+                            page.wait_for_timeout(1000)
+                        else:
+                            raise Exception("Timeout")
+                        
+                        page.wait_for_timeout(3000)
+                        success = True
+                    except Exception:
+                        success = False
+                    
+                    browser.close()
+                    return success
+            except ValueError as e:
+                raise ValueError(str(e))
+            except Exception as e:
+                raise ValueError(f"Falha ao salvar cookies: {str(e)}")
 
     @staticmethod
     def desconectar_workana(user_id: str):

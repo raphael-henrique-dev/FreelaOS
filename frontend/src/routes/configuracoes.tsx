@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageContainer, PageHeader } from "@/components/page-header";
 
@@ -118,6 +119,10 @@ function ConfigPage({ initialData }: { initialData: any }) {
   
   const [connectingWorkana, setConnectingWorkana] = useState(false);
   const [isConnectedWorkana, setIsConnectedWorkana] = useState(initialData.isConnectedWorkana);
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authPlatform, setAuthPlatform] = useState<"99freelas" | "workana" | null>(null);
+  const [authCookies, setAuthCookies] = useState("");
 
   const [syncingGithub, setSyncingGithub] = useState(false);
   const [showGithubOptions, setShowGithubOptions] = useState(false);
@@ -263,6 +268,46 @@ function ConfigPage({ initialData }: { initialData: any }) {
 
   function toggleIgnoreExclusive(id: string, checked: boolean) {
     setIntegracoes(prev => prev.map(int => int.id === id ? { ...int, ignoreExclusive: checked } : int));
+  };
+
+    const openAuthModal = (platform: "99freelas" | "workana") => {
+    setAuthPlatform(platform);
+    setAuthCookies("");
+    setAuthModalOpen(true);
+  };
+
+  const handleAuthSubmit = async () => {
+    if (!authPlatform || !authCookies) {
+      toast.error("Cole o JSON dos cookies.");
+      return;
+    }
+    
+    const is99 = authPlatform === "99freelas";
+    const setConnecting = is99 ? setConnecting99 : setConnectingWorkana;
+    const setIsConnected = is99 ? setIsConnected99 : setIsConnectedWorkana;
+    const endpoint = is99 ? "/api/auth/99freelas" : "/api/auth/workana";
+    
+    setAuthModalOpen(false);
+    setConnecting(true);
+    toast.info("Injetando cookies na sessão...", { duration: 4000 });
+    
+    try {
+      const res = await api.post(endpoint, { 
+        user_id: userId,
+        cookies_json: authCookies
+      });
+      if (res.data && res.data.status === "success") {
+        toast.success(res.data.message || "Cookies injetados com sucesso!");
+        setIsConnected(true);
+      } else {
+        toast.error(res.data?.message || "Erro desconhecido ao injetar.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || err.message || "Falha de conexão.");
+    } finally {
+      setConnecting(false);
+      setAuthCookies("");
+    }
   };
 
   const handleConnect99Freelas = async () => {
@@ -770,10 +815,15 @@ function ConfigPage({ initialData }: { initialData: any }) {
                           </Button>
                         </div>
                       ) : (
-                        <Button size="sm" variant="outline" onClick={handleConnect99Freelas} disabled={connecting99}>
-                          {connecting99 ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
-                          {connecting99 ? "Aguardando login..." : "Conectar Conta"}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={handleConnect99Freelas} disabled={connecting99}>
+                            {connecting99 ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+                            {connecting99 ? "Aguardando login..." : "Conectar Conta"}
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => openAuthModal("99freelas")} disabled={connecting99}>
+                            Importar Cookies
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -801,10 +851,15 @@ function ConfigPage({ initialData }: { initialData: any }) {
                           </Button>
                         </div>
                       ) : (
-                        <Button size="sm" variant="outline" onClick={handleConnectWorkana} disabled={connectingWorkana}>
-                          {connectingWorkana ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
-                          {connectingWorkana ? "Aguardando login..." : "Conectar Conta"}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={handleConnectWorkana} disabled={connectingWorkana}>
+                            {connectingWorkana ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
+                            {connectingWorkana ? "Aguardando login..." : "Conectar Conta"}
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => openAuthModal("workana")} disabled={connectingWorkana}>
+                            Importar Cookies
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -814,6 +869,28 @@ function ConfigPage({ initialData }: { initialData: any }) {
           </CardContent>
         </Card>
       </div>
+      <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Injetar Cookies: {authPlatform === '99freelas' ? '99Freelas' : 'Workana'}</DialogTitle>
+            <DialogDescription>
+              Se o login interativo falhar ou você estiver num servidor (Render), use este método. Exporte os cookies usando a extensão EditThisCookie e cole abaixo:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Textarea
+              value={authCookies}
+              onChange={(e) => setAuthCookies(e.target.value)}
+              placeholder='[ { "domain": ".99freelas.com.br", "name": "PHPSESSID", ... } ]'
+              className="min-h-[150px] font-mono text-xs"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAuthModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleAuthSubmit}>Injetar Sessão</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
