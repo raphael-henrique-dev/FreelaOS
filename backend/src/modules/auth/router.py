@@ -8,6 +8,7 @@ router = APIRouter()
 
 class AuthRequest(BaseModel):
     user_id: str
+    cookies_json: str | None = None
 
 class GithubSyncRequest(BaseModel):
     user_id: str
@@ -17,7 +18,6 @@ class GithubSyncRequest(BaseModel):
 def logout_usuario(req: AuthRequest, current_user: dict = Depends(get_current_user)):
     try:
         if req.user_id != current_user['user_id']:
-            from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Acesso negado")
         AuthService.encerrar_sessao_usuario(req.user_id)
         return {"status": "success", "message": "Sessão e tarefas em background encerradas com sucesso."}
@@ -28,9 +28,8 @@ def logout_usuario(req: AuthRequest, current_user: dict = Depends(get_current_us
 def conectar_99freelas(req: AuthRequest, current_user: dict = Depends(get_current_user)):
     try:
         if req.user_id != current_user['user_id']:
-            from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Acesso negado")
-        success = AuthService.conectar_99freelas(req.user_id)
+        success = AuthService.conectar_99freelas(req.user_id, req.cookies_json)
         if success:
             return {"status": "success", "message": "Login detectado e sessão salva com sucesso!"}
         else:
@@ -44,7 +43,6 @@ def conectar_99freelas(req: AuthRequest, current_user: dict = Depends(get_curren
 def desconectar_99freelas(req: AuthRequest, current_user: dict = Depends(get_current_user)):
     try:
         if req.user_id != current_user['user_id']:
-            from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Acesso negado")
         AuthService.desconectar_99freelas(req.user_id)
         return {"status": "success", "message": "Sessão desconectada com sucesso!"}
@@ -67,9 +65,8 @@ def status_99freelas(user_id: str, current_user: dict = Depends(get_current_user
 def conectar_workana(req: AuthRequest, current_user: dict = Depends(get_current_user)):
     try:
         if req.user_id != current_user['user_id']:
-            from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Acesso negado")
-        success = AuthService.conectar_workana(req.user_id)
+        success = AuthService.conectar_workana(req.user_id, req.cookies_json)
         if success:
             return {"status": "success", "message": "Login na Workana detectado e sessão salva!"}
         else:
@@ -83,7 +80,6 @@ def conectar_workana(req: AuthRequest, current_user: dict = Depends(get_current_
 def desconectar_workana(req: AuthRequest, current_user: dict = Depends(get_current_user)):
     try:
         if req.user_id != current_user['user_id']:
-            from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Acesso negado")
         AuthService.desconectar_workana(req.user_id)
         return {"status": "success", "message": "Sessão da Workana desconectada com sucesso!"}
@@ -106,7 +102,6 @@ def status_workana(user_id: str, current_user: dict = Depends(get_current_user))
 def sync_github_portfolio(req: GithubSyncRequest, current_user: dict = Depends(get_current_user)):
     try:
         if req.user_id != current_user['user_id']:
-            from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="Acesso negado")
         success = AuthService.sync_github_portfolio(req.user_id, req.provider_token)
         if success:
