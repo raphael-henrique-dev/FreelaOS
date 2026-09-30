@@ -55,5 +55,3 @@ playwright_sessions/
 
 artifacts
 settings.json
-docker-compose.yml
-Dockerfile

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  freelaos-backend:
+    build: .
+    container_name: freelaos-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - playwright_data:/app/playwright_sessions
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  playwright_data:
