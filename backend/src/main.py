@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 # Carrega variáveis de ambiente
 load_dotenv()
 
+PROD = True if os.getenv("ENV") == "production" else False
+
 # Formatter customizado para encurtar o nome do módulo
 class ShortNameFormatter(logging.Formatter):
     def format(self, record):
@@ -44,11 +46,14 @@ from backend.src.modules.assistant.router import router as assistant_router
 # O inbox_monitor e extractor antigamente eram disparados por rotas,
 # Precisamos garantir que eles não quebrem.
 try:
-    from backend.src.modules.communications.inbox_monitor import router as inbox_router
+    from backend.src.modules.communications.inbox_monitor import router as inbox_routers
 except ImportError:
     inbox_router = None
 
-app = FastAPI(title="FreelaOS Agents API (Clean Arch)")
+app = FastAPI(title="FreelaOS Agents API (Clean Arch)",
+              docs_url="/api/docs" if PROD == True else None,
+              openapi_url="/api/openapi.json" if PROD == True else None,
+              redoc_url="/api/redoc" if PROD == True else None)
 
 # Lê a string do .env e converte para lista (ex: "http://localhost:5173,https://meusite.com")
 origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
