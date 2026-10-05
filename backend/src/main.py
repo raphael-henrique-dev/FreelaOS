@@ -46,7 +46,7 @@ from backend.src.modules.assistant.router import router as assistant_router
 # O inbox_monitor e extractor antigamente eram disparados por rotas,
 # Precisamos garantir que eles não quebrem.
 try:
-    from backend.src.modules.communications.inbox_monitor import router as inbox_routers
+    from backend.src.modules.communications.inbox_monitor import router as inbox_router
 except ImportError:
     inbox_router = None
 
