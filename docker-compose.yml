@@ -10,6 +10,9 @@ services:
       - playwright_data:/app/playwright_sessions
     env_file:
       - .env
+    security_opt:
+      - seccomp:unconfined
+    ipc: host
     restart: unless-stopped
 
 volumes:
