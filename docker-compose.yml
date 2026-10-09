@@ -13,6 +13,11 @@ services:
     security_opt:
       - seccomp:unconfined
     ipc: host
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+    pids_limit: 4096
     restart: unless-stopped
 
 volumes:
