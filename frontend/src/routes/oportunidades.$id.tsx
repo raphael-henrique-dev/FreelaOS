@@ -167,7 +167,7 @@ function OpDetail() {
               <Badge variant={statusVariant(op.status)}>{op.status}</Badge>
               <span className="text-xs text-muted-foreground">{op.createdAt}</span>
             </div>
-            <CardTitle className="mt-2 text-2xl leading-tight">{op.title}</CardTitle>
+            <CardTitle className="mt-2 break-words text-xl leading-tight sm:text-2xl">{op.title}</CardTitle>
             <div className="mt-3 flex items-center gap-2.5">
               <ClientAvatar nome={op.client} fotoUrl={op.clientPhotoUrl} className="h-8 w-8" />
               <div>
@@ -176,7 +176,7 @@ function OpDetail() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <p className="text-sm leading-relaxed text-foreground/90">{op.description}</p>
+            <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground/90">{op.description}</p>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Meta label="Valor" value={currency(op.budget)} />
               <Meta label="Prazo" value={op.deadline} />
@@ -192,11 +192,11 @@ function OpDetail() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               {op.status === "Aguardando Análise" ? (
                 <Button
                   size="lg"
-                  className="flex-1 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+                  className="w-full flex-1 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
                   onClick={handleGerarParecer}
                   disabled={loadingParecer}
                 >
@@ -206,7 +206,7 @@ function OpDetail() {
               ) : op.proposta_ia && op.proposta_ia.trim() !== "" ? (
                 <Button
                   size="lg"
-                  className="flex-1 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+                  className="w-full flex-1 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
                   onClick={() => navigate({ to: "/propostas/$id", params: { id: op.id } })}
                 >
                   <Sparkles className="mr-2 h-4 w-4" /> Ver proposta gerada por IA
@@ -214,29 +214,31 @@ function OpDetail() {
               ) : (
                 <Button
                   size="lg"
-                  className="flex-1 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
+                  className="w-full flex-1 bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90"
                   onClick={() => navigate({ to: "/propostas/$id", params: { id: op.id } })}
                 >
                   <Sparkles className="mr-2 h-4 w-4" /> Gerar proposta com Redator IA
                 </Button>
               )}
               
-              {op.url && (
-                <Button size="lg" variant="outline" asChild>
-                  <a href={op.url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" /> URL da vaga
-                  </a>
-                </Button>
-              )}
+              <div className="flex gap-3">
+                {op.url && (
+                  <Button size="lg" variant="outline" asChild className="flex-1 sm:flex-none">
+                    <a href={op.url} target="_blank" rel="noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" /> URL da vaga
+                    </a>
+                  </Button>
+                )}
 
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-                onClick={handleIgnore}
-              >
-                <Trash2 className="mr-2 h-4 w-4" /> Ignorar
-              </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="flex-1 border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive sm:flex-none"
+                  onClick={handleIgnore}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Ignorar
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -276,9 +278,9 @@ function OpDetail() {
 
 function Meta({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-medium">{value}</p>
+      <p className="mt-1 break-words text-sm font-medium">{value}</p>
     </div>
   );
 }

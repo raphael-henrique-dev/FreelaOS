@@ -213,6 +213,7 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
       <PageHeader
         title="Oportunidades"
         description="Projetos coletados por Scout IA e qualificados por Analista IA."
+        actionsClassName="col-span-full flex-wrap sm:col-auto"
         actions={
           <OpActions 
             handleWipeAll={handleWipeAll}
@@ -264,8 +265,8 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
 
         {!isLoading && groupedOps.map(group => (
           <div key={group.date} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between mb-3 ml-1">
-              <h3 className="text-lg font-semibold text-foreground/90 flex items-center">
+            <div className="mb-3 ml-1 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="flex flex-wrap items-center gap-y-1 text-base font-semibold text-foreground/90 sm:text-lg">
                 <div className="h-2 w-2 rounded-full bg-primary/80 mr-2"></div>
                 {group.date}
                 <Badge variant="secondary" className="ml-3 text-xs opacity-70">
@@ -275,7 +276,7 @@ function OpList({ opportunities, isLoading }: { opportunities: any[], isLoading:
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white h-7 text-xs px-2"
+                className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white h-8 text-xs px-2 sm:h-7"
                 onClick={() => handleIgnorarDia(group.items)}
               >
                 <Trash2 className="mr-1.5 h-3 w-3" /> Ignorar todas deste dia
@@ -307,7 +308,7 @@ function OpActions({
             Filtrar {(filterStatuses.length > 0 || filterPlatforms.length > 0 || filterMinScore > 0) && "(Ativo)"}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-4 shadow-xl border-border/60 bg-card/95 backdrop-blur" align="start">
+        <PopoverContent className="w-[calc(100vw-2rem)] p-4 shadow-xl border-border/60 bg-card/95 backdrop-blur sm:w-80" align="start">
           <div className="space-y-4">
             <h4 className="font-medium leading-none mb-3">Filtros</h4>
             
@@ -375,7 +376,7 @@ function OpActions({
         className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
         onClick={handleWipeAll}
       >
-        <Trash2 className="mr-2 h-4 w-4" /> APAGAR todas oportunidades
+        <Trash2 className="mr-2 h-4 w-4" /> <span className="sm:hidden">Apagar tudo</span><span className="hidden sm:inline">APAGAR todas oportunidades</span>
       </Button>
 
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
@@ -385,7 +386,7 @@ function OpActions({
             {isExtractingUrl ? "Analisando..." : "Buscar por URL"}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-4 shadow-xl border-border/60 bg-card/95 backdrop-blur" align="end">
+        <PopoverContent className="w-[calc(100vw-2rem)] p-4 shadow-xl border-border/60 bg-card/95 backdrop-blur sm:w-80" align="end">
           <div className="space-y-3">
             <h4 className="font-medium leading-none">Analisar Vaga Específica</h4>
             <p className="text-xs text-muted-foreground">
@@ -429,7 +430,58 @@ function OpActions({
 
 function OpTable({ groupItems, handleIgnore }: { groupItems: any[], handleIgnore: (id: string) => void }) {
   return (
-    <Card className="hover:border-border hover:translate-y-0">
+    <>
+    {/* Mobile: lista de cards */}
+    <div className="space-y-3 md:hidden">
+      {groupItems.map((op: any) => (
+        <Card key={op.id} className="border-border/60 bg-card/60 hover:translate-y-0">
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-start justify-between gap-2">
+              <Link to="/oportunidades/$id" params={{ id: op.id }} className="min-w-0 break-words font-medium leading-tight hover:text-primary">
+                {op.title}
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="-mr-2 -mt-1 h-9 w-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => handleIgnore(op.id)}
+                title="Ignorar vaga"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ClientAvatar nome={op.client} fotoUrl={op.clientPhotoUrl} className="h-6 w-6 text-[10px]" />
+              <span className="truncate">{op.client}</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="whitespace-nowrap bg-background/50 text-xs">{op.platform}</Badge>
+              <Badge variant={statusVariant(op.status)}>{op.status}</Badge>
+              <span className={`ml-auto text-sm font-semibold ${scoreColor(op.score || 0)}`}>{op.score || 0}/100</span>
+            </div>
+
+            {op.stack && op.stack.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {op.stack.slice(0, 4).map((s: string) => (
+                  <span key={s} className="rounded-md border border-border/50 bg-background/40 px-1.5 py-0.5 text-[10px] text-muted-foreground">{s}</span>
+                ))}
+                {op.stack.length > 4 && <span className="text-[10px] text-muted-foreground">+{op.stack.length - 4}</span>}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between border-t border-border/50 pt-2 text-sm">
+              <span className="font-medium text-foreground">R$ {op.budget}</span>
+              <span className="text-muted-foreground">{op.deadline}</span>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+
+    {/* Desktop: tabela */}
+    <Card className="hidden hover:border-border hover:translate-y-0 md:block">
       <CardContent className="overflow-x-auto p-0">
         <Table>
           <TableHeader>
@@ -514,5 +566,6 @@ function OpTable({ groupItems, handleIgnore }: { groupItems: any[], handleIgnore
         </Table>
       </CardContent>
     </Card>
+    </>
   );
 }

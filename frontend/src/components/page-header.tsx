@@ -4,10 +4,12 @@ export function PageHeader({
   title,
   description,
   actions,
+  actionsClassName = "",
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  actionsClassName?: string;
 }) {
   return (
     <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between">
@@ -17,7 +19,7 @@ export function PageHeader({
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div className={`flex shrink-0 items-center gap-2 ${actionsClassName}`}>{actions}</div> : null}
     </header>
   );
 }

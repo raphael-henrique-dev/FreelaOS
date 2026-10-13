@@ -25,6 +25,12 @@ repo_profile = ProfileRepository()
 class ExtractorRequest(BaseModel):
     user_id: str
 
+def _integracao_ativa(integracoes, chave: str) -> bool:
+    val = integracoes.get(chave) if isinstance(integracoes, dict) else None
+    if isinstance(val, dict):
+        return bool(val.get("enabled", False))
+    return bool(val)
+
 def executar_extracao(user_id: str, manual: bool = False):
     if BrowserManager.is_cancelled(user_id):
         logger.info(f"Execução de extração cancelada para o usuário {user_id}.")
@@ -68,7 +74,9 @@ def executar_extracao(user_id: str, manual: bool = False):
     urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
     
     # 1. Crawler 99Freelas
-    if not BrowserManager.is_cancelled(user_id):
+    if not _integracao_ativa(integracoes, "99freelas"):
+        logger.info("99Freelas desativada nas configurações. Pulando crawler.")
+    elif not BrowserManager.is_cancelled(user_id):
         try:
             from backend.src.modules.opportunities.freelas99_crawler import Freelas99Crawler
             AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "99Freelas"})
@@ -87,7 +95,9 @@ def executar_extracao(user_id: str, manual: bool = False):
         return
 
     # 2. Crawler Workana
-    if not BrowserManager.is_cancelled(user_id):
+    if not _integracao_ativa(integracoes, "workana"):
+        logger.info("Workana desativada nas configurações. Pulando crawler.")
+    elif not BrowserManager.is_cancelled(user_id):
         try:
             from backend.src.modules.opportunities.workana_crawler import WorkanaCrawler
             AgentActivityLogger.log(user_id, "Scout", "Procurando por vagas...", "processando", 1, {"plataforma": "Workana"})
