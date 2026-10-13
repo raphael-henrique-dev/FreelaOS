@@ -309,4 +309,4 @@ def executar_extracao_url(user_id: str, url: str):
     res_ops = repo_op.get_opportunities(user_id)
     urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
     
-    processar_vagas_pipeline(user_id, [vaga], urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana)
+    processar_vagas_pipeline(user_id, [vaga], urls_existentes, valor_minimo, automacao_ativada, limite_automacao, limite_descarte, revisao_humana)

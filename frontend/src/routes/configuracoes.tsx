@@ -559,7 +559,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
         </Card>
 
         {/* IDIOMAS & PRECIFICAÇÃO */}
-        <Card className="border-border/60 bg-card/60">
+        {/* <Card className="border-border/60 bg-card/60">
           <CardHeader>
             <CardTitle className="text-base">Precificação & Idiomas</CardTitle>
           </CardHeader>
@@ -628,7 +628,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* MODELOS DE PROPOSTA */}
         <Card className="border-border/60 bg-card/60 lg:col-span-2">
@@ -759,8 +759,8 @@ function ConfigPage({ initialData }: { initialData: any }) {
         {/* INTEGRACOES */}
         <Card className="border-border/60 bg-card/60 lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Integrações de Agentes e APIs</CardTitle>
-            <p className="text-xs text-muted-foreground">Ative ou desative as fontes de dados do seu Sistema Operacional.</p>
+            <CardTitle className="text-base">Integrações de Plataformas e I.A</CardTitle>
+            <p className="text-xs text-muted-foreground">Ative ou desative as fontes de dados e modelos de inteligência artificial do freela.</p>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
             {integracoes.map((i) => (
