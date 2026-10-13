@@ -25,7 +25,7 @@ repo_profile = ProfileRepository()
 class ExtractorRequest(BaseModel):
     user_id: str
 
-def executar_extracao(user_id: str):
+def executar_extracao(user_id: str, manual: bool = False):
     if BrowserManager.is_cancelled(user_id):
         logger.info(f"Execução de extração cancelada para o usuário {user_id}.")
         return
@@ -106,9 +106,9 @@ def executar_extracao(user_id: str):
         return
 
     # 3. Pipeline Unificada de I.A. (Scout -> Analista -> Redator -> Sender)
-    processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana, limite_descarte)
+    processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana, limite_descarte, manual=manual)
 
-def processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana, limite_descarte):
+def processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana, limite_descarte, manual=False):
     from backend.src.core.activity_logger import AgentActivityLogger
     novas_vagas = [v for v in vagas_extraidas if v.get("url") not in urls_existentes]
     total_novas = len(novas_vagas)
@@ -127,11 +127,13 @@ def processar_vagas_pipeline(user_id, vagas_extraidas, urls_existentes, valor_mi
             logger.info(f"Cancelamento detectado no loop de vagas para {user_id}.")
             return
 
-        check_conf = repo_profile.get_user_settings(user_id)
-        if check_conf and not check_conf.get("piloto_automatico_ativado"):
-            logger.warning("Piloto Automático foi DESLIGADO pelo usuário. Abortando pipeline IMEDIATAMENTE.")
-            AgentActivityLogger.log(user_id, "Motor", "Piloto Automático desativado pelo usuário.", "alerta", 4)
-            return
+        # Execuções manuais (disparadas pelo usuário) ignoram a checagem do piloto automático
+        if not manual:
+            check_conf = repo_profile.get_user_settings(user_id)
+            if check_conf and not check_conf.get("piloto_automatico_ativado"):
+                logger.warning("Piloto Automático foi DESLIGADO pelo usuário. Abortando pipeline IMEDIATAMENTE.")
+                AgentActivityLogger.log(user_id, "Motor", "Piloto Automático desativado pelo usuário.", "alerta", 4)
+                return
 
         url_vaga = vaga["url"]
         titulo = vaga["titulo"]
@@ -294,8 +296,8 @@ def executar_extracao_url(user_id: str, url: str):
     perfil = repo_profile.get_profile(user_id)
     valor_minimo = perfil.get("valor_projeto_minimo", 0) if perfil else 0
     config_res = repo_profile.get_user_settings(user_id)
-    limite_automacao = 70
-    limite_descarte = 30
+    limite_automacao = repo_profile.get_user_settings(user_id)['modelos_proposta'].get("limite_automacao", 70) if config_res else 80
+    limite_descarte = repo_profile.get_user_settings(user_id)['modelos_proposta'].get("limite_descarte", 30) if config_res else 30
     automacao_ativada = True
     revisao_humana = True
     if config_res:
@@ -309,4 +311,4 @@ def executar_extracao_url(user_id: str, url: str):
     res_ops = repo_op.get_opportunities(user_id)
     urls_existentes = {op.get("url") for op in res_ops if op.get("url")}
     
-    processar_vagas_pipeline(user_id, [vaga], urls_existentes, valor_minimo, automacao_ativada, limite_automacao, limite_descarte, revisao_humana)
+    processar_vagas_pipeline(user_id, [vaga], urls_existentes, valor_minimo, automacao_ativada, limite_automacao, revisao_humana, limite_descarte, manual=True)

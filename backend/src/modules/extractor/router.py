@@ -94,7 +94,7 @@ def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks,
     from fastapi import HTTPException
     if req.user_id != current_user['user_id']: raise HTTPException(status_code=403)
     BrowserManager.clear_cancelled(req.user_id)
-    background_tasks.add_task(executar_extracao, req.user_id)
+    background_tasks.add_task(executar_extracao, req.user_id, True)
     return {"mensagem": "Extrator disparado! Ele varrerá a web em segundo plano."}
 
 @router.post("/api/extractor/run-url")

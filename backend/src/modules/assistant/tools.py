@@ -43,7 +43,7 @@ def start_extractor(user_id: str) -> dict:
     import asyncio
     try:
         loop = asyncio.get_running_loop()
-        loop.run_in_executor(None, executar_extracao, user_id)
+        loop.run_in_executor(None, executar_extracao, user_id, True)
         return {"success": True, "message": "Extrator disparado com sucesso em segundo plano."}
     except Exception as e:
         logger.error(f"Erro em start_extractor: {e}")
