@@ -17,11 +17,20 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/core/api";
-import { Bell, MessageSquare } from "lucide-react";
+import { Bell, MessageSquare, ShieldCheck, Loader2, ExternalLink } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { AssistantWidget } from "@/components/assistant-widget";
 import { AgentActivityIsland } from "@/components/agent-activity-island";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function NotFoundComponent() {
   return (
@@ -132,25 +141,87 @@ function RootComponent() {
   const [unreadMessages, setUnreadMessages] = useState<any[]>([]);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
+  // Estados de Consentimento LGPD
+  const [needsConsentModal, setNeedsConsentModal] = useState(false);
+  const [consentLoading, setConsentLoading] = useState(false);
+  const [consentTerms, setConsentTerms] = useState(false);
+  const [consentPrivacy, setConsentPrivacy] = useState(false);
+  const [consentAI, setConsentAI] = useState(false);
+
   useEffect(() => {
+    const isPublicRoute = (p: string) =>
+      p === '/login' || p === '/onboarding' || p === '/termos' || p === '/privacidade';
+
+    const checkConsent = async (uid: string) => {
+      try {
+        const res = await api.get(`/api/privacy/consent?user_id=${uid}`);
+        if (res.data?.necessita_novo_aceite) {
+          setNeedsConsentModal(true);
+          setConsentTerms(!!res.data?.termos_aceito);
+          setConsentPrivacy(!!res.data?.privacidade_aceito);
+          setConsentAI(!!res.data?.ia_terceiros_aceito);
+        } else {
+          setNeedsConsentModal(false);
+        }
+      } catch (err) {
+        console.warn("Não foi possível verificar status de consentimento:", err);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
       const path = window.location.pathname;
-      if (!session && path !== '/login' && path !== '/onboarding') {
+      if (!session && !isPublicRoute(path)) {
         router.navigate({ to: '/login' });
+      } else if (session?.user?.id && !isPublicRoute(path)) {
+        checkConsent(session.user.id);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
       const path = window.location.pathname;
-      if (!session && path !== '/login' && path !== '/onboarding') {
+      if (!session && !isPublicRoute(path)) {
         router.navigate({ to: '/login' });
+      } else if (session?.user?.id && !isPublicRoute(path)) {
+        checkConsent(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [router]);
+
+  const handleConfirmConsent = async () => {
+    if (!consentTerms || !consentPrivacy || !consentAI) {
+      toast.error("Por favor, aceite todos os termos obrigatórios para continuar.");
+      return;
+    }
+    setConsentLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      await api.post("/api/privacy/consent", {
+        user_id: session.user.id,
+        consentimentos: [
+          { tipo: "termos", versao: "v1.0", aceito: true },
+          { tipo: "privacidade", versao: "v1.0", aceito: true },
+          { tipo: "ia_terceiros", versao: "v1.0", aceito: true },
+        ],
+      });
+      toast.success("Consentimentos registrados com sucesso! Bem-vindo(a) ao FreelaOS.");
+      setNeedsConsentModal(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Erro ao registrar consentimento.");
+    } finally {
+      setConsentLoading(false);
+    }
+  };
+
+  const handleLogoutFromConsent = async () => {
+    await supabase.auth.signOut();
+    setNeedsConsentModal(false);
+    router.navigate({ to: "/login" });
+  };
 
   // Efeito isolado para tratar mensagens e Realtime apenas quando autenticado
   useEffect(() => {
@@ -225,8 +296,12 @@ function RootComponent() {
     };
   }, [isAuthenticated]);
 
-  const isAuthRoute = pathname === '/login' || pathname === '/onboarding';
-  const showUI = isAuthenticated && !isAuthRoute;
+  const isStandaloneRoute =
+    pathname === '/login' ||
+    pathname === '/onboarding' ||
+    pathname === '/termos' ||
+    pathname === '/privacidade';
+  const showUI = isAuthenticated && !isStandaloneRoute;
   const isAssistantRoute = pathname === '/assistente';
 
   return (
@@ -293,6 +368,124 @@ function RootComponent() {
         {showUI && <AgentActivityIsland />}
         {showUI && !isAssistantRoute && <AssistantWidget />}
         <Toaster theme="dark" position="bottom-right" />
+
+        {/* Modal Global de Consentimento LGPD */}
+        <Dialog open={needsConsentModal} onOpenChange={() => {}}>
+          <DialogContent 
+            className="sm:max-w-[540px] border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl [&>button]:hidden"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
+            <DialogHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-bold text-foreground">
+                    Termos e Privacidade (LGPD)
+                  </DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Lei Geral de Proteção de Dados (Lei nº 13.709/2018)
+                  </p>
+                </div>
+              </div>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
+                Para garantir conformidade legal e proteger seus dados e os de clientes,
+                solicitamos seu consentimento formal sobre os termos de operação dos nossos agentes autônomos de IA:
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3.5 py-2 text-xs">
+              <label className="flex items-start gap-3 rounded-lg border border-border/50 bg-background/50 p-3 hover:bg-muted/10 cursor-pointer transition-colors">
+                <Checkbox 
+                  id="consent-terms"
+                  checked={consentTerms} 
+                  onCheckedChange={(checked) => setConsentTerms(!!checked)}
+                  className="mt-0.5"
+                />
+                <div className="space-y-1">
+                  <span className="font-medium text-foreground">
+                    Termos de Uso da Plataforma (v1.0)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Concordo com os{" "}
+                    <a href="/termos" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1 hover:text-primary/80">
+                      Termos de Uso <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                    , incluindo a responsabilidade pela supervisão humana de automações e o uso ético da ferramenta.
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-lg border border-border/50 bg-background/50 p-3 hover:bg-muted/10 cursor-pointer transition-colors">
+                <Checkbox 
+                  id="consent-privacy"
+                  checked={consentPrivacy} 
+                  onCheckedChange={(checked) => setConsentPrivacy(!!checked)}
+                  className="mt-0.5"
+                />
+                <div className="space-y-1">
+                  <span className="font-medium text-foreground">
+                    Política de Privacidade e Retenção (v1.0)
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Li e compreendo a{" "}
+                    <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-1 hover:text-primary/80">
+                      Política de Privacidade <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
+                    , ciente de como meus dados pessoais e dados de terceiros são armazenados, minimizados e passíveis de eliminação definitiva sob demanda.
+                  </p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-lg border border-border/50 bg-background/50 p-3 hover:bg-muted/10 cursor-pointer transition-colors">
+                <Checkbox 
+                  id="consent-ai"
+                  checked={consentAI} 
+                  onCheckedChange={(checked) => setConsentAI(!!checked)}
+                  className="mt-0.5"
+                />
+                <div className="space-y-1">
+                  <span className="font-medium text-foreground">
+                    Processamento Seguro por Modelos de IA
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Autorizo o envio de briefings de vagas a provedores terceiros de LLM (OpenAI, Gemini, Groq), com prévia higienização algorítmica de dados de contato (minimização de PII).
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <DialogFooter className="flex-col sm:flex-row gap-2 pt-2 border-t border-border/40">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleLogoutFromConsent}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Sair da Conta
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={consentLoading || !consentTerms || !consentPrivacy || !consentAI}
+                onClick={handleConfirmConsent}
+                className="text-xs font-semibold shadow-md shadow-primary/20"
+              >
+                {consentLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    Registrando...
+                  </>
+                ) : (
+                  "Confirmar e Continuar"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SidebarProvider>
     </QueryClientProvider>
   );

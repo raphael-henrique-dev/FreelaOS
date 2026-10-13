@@ -1,6 +1,7 @@
 from backend.src.core.llm_client import generate_json
 from backend.src.modules.opportunities.repository import OpportunityRepository, ProfileRepository, ClientRepository
 from backend.src.core.llm_client import _get_active_llm
+from backend.src.core.pii_sanitizer import sanitize_pii
 
 opp_repo = OpportunityRepository()
 profile_repo = ProfileRepository()
@@ -17,6 +18,8 @@ class AnalistaService:
         if not perfil:
             raise ValueError("Perfil de usuário não encontrado")
 
+        descricao_limpa = sanitize_pii(vaga.get('descricao', ''))
+        
         prompt = f"""
         Você é o Analista IA, um agente rigoroso responsável por calcular o "Score de Compatibilidade" (0 a 100)
         de uma oportunidade de projeto freelancer em relação ao perfil do desenvolvedor.
@@ -31,7 +34,7 @@ class AnalistaService:
 
         OPORTUNIDADE ENCONTRADA:
         - Título: {vaga.get('titulo', '')}
-        - Descrição: {vaga.get('descricao', '')}
+        - Descrição: {descricao_limpa}
         - Tecnologias (Stack): {', '.join(vaga.get('stack', []))}
         - Orçamento Indicado: {vaga.get('orcamento', 0)}
         - Prazo: {vaga.get('prazo', '')}
@@ -106,6 +109,7 @@ class RedatorService:
                 personalizado_prompt = mod.get("personalizado_prompt", "")
 
         tone_instructions = RedatorService._get_tone_prompt(modelo_ativo, personalizado_prompt)
+        descricao_limpa = sanitize_pii(vaga.get('descricao', ''))
 
         sys_prompt = f"""Você é o Redator IA, um especialista em vendas B2B e captação de clientes que buscam freelancers.
 Sua missão é escrever uma proposta matadora para a vaga descrita abaixo, se passando pelo perfil do profissional.
@@ -120,7 +124,7 @@ Nível de Experiência: {perfil.get('senioridade', 'Não informado')}
 [DADOS DA VAGA]
 Título: {vaga.get('titulo')}
 Nome do cliente: {vaga.get('cliente', '').split(' ')[0] if vaga.get('cliente') else ''}
-Descrição Completa: {vaga.get('descricao')}
+Descrição Completa: {descricao_limpa}
 Orçamento: R$ {vaga.get('orcamento')}
 
 [ESTILO DA PROPOSTA (DIRETRIZ OBRIGATÓRIA)]
@@ -166,6 +170,7 @@ Orçamento: R$ {vaga.get('orcamento')}
 class ScoutService:
     @staticmethod
     def analisar_vaga(texto: str, plataforma: str, perfil_id: str, foto_url: str = None) -> dict:
+        texto_limpo = sanitize_pii(texto)
         prompt = f"""
         Você é o Scout IA, um agente especializado em analisar descrições de vagas para freelancers.
         Leia o texto abaixo e extraia as seguintes informações em formato JSON válido e rigoroso.
@@ -181,7 +186,7 @@ class ScoutService:
         }}
 
         TEXTO DA VAGA BRUTA:
-        {texto}
+        {texto_limpo}
         """
 
         active_llm = _get_active_llm(perfil_id)
