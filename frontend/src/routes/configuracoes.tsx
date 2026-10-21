@@ -173,6 +173,15 @@ function ConfigPage({ initialData }: { initialData: any }) {
   const [limiteAutomacao, setLimiteAutomacao] = useState(config.modelos_proposta?.limite_automacao ?? 70);
   const [limiteDescarte, setLimiteDescarte] = useState(config.modelos_proposta?.limite_descarte ?? 30);
   const [automacaoAtivada, setAutomacaoAtivada] = useState(config.modelos_proposta?.automacao_ativada ?? true);
+  const [orcamentoAbaixoMediaAtivado, setOrcamentoAbaixoMediaAtivado] = useState<boolean>(
+    config.modelos_proposta?.orcamento_abaixo_media_ativado ?? false
+  );
+  const [orcamentoAbaixoMediaModo, setOrcamentoAbaixoMediaModo] = useState<"5" | "10" | "25" | "outro">(
+    config.modelos_proposta?.orcamento_abaixo_media_modo ?? "10"
+  );
+  const [orcamentoAbaixoMediaPercentual, setOrcamentoAbaixoMediaPercentual] = useState<number>(
+    Number(config.modelos_proposta?.orcamento_abaixo_media_percentual ?? 10)
+  );
   const [revisaoHumana, setRevisaoHumana] = useState(config.revisao_humana_obrigatoria ?? true);
   const [intervalHours, setIntervalHours] = useState(config.interval_hours ?? 3);
 
@@ -282,6 +291,12 @@ function ConfigPage({ initialData }: { initialData: any }) {
   };
 
   const handleSave = async () => {
+    const pctNum = Number(orcamentoAbaixoMediaPercentual);
+    if (!Number.isFinite(pctNum) || pctNum < 0 || pctNum > 100) {
+      toast.error("O percentual abaixo da média deve estar entre 0.0 e 100.0.");
+      return;
+    }
+
     const integracoesJson = integracoes.reduce((acc, curr) => ({ ...acc, [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive } }), {});
     
     await saveConfig({
@@ -292,7 +307,16 @@ function ConfigPage({ initialData }: { initialData: any }) {
       },
       configPayload: {
         integracoes: integracoesJson,
-        modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada, limite_descarte: limiteDescarte },
+        modelos_proposta: {
+          ativo: modeloAtivo,
+          personalizado_prompt: promptPersonalizado,
+          limite_automacao: limiteAutomacao,
+          automacao_ativada: automacaoAtivada,
+          limite_descarte: limiteDescarte,
+          orcamento_abaixo_media_ativado: orcamentoAbaixoMediaAtivado,
+          orcamento_abaixo_media_modo: orcamentoAbaixoMediaModo,
+          orcamento_abaixo_media_percentual: Number(pctNum.toFixed(2)),
+        },
         revisao_humana_obrigatoria: revisaoHumana,
         interval_hours: intervalHours
       }
@@ -794,6 +818,80 @@ function ConfigPage({ initialData }: { initialData: any }) {
               <p className="text-[11px] text-muted-foreground mb-1 mt-2 leading-relaxed">
                 Se ativado, o robô final (Sender) não enviará propostas automaticamente, deixando-as como "Rascunho" para sua aprovação no Backlog. Se desativado, o Piloto Automático enviará as propostas direto para o cliente.
               </p>
+            </div>
+
+            <div className="pt-4 border-t border-border/50">
+              <Label className="text-xs text-muted-foreground flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span>Enviar orçamento abaixo da média</span>
+                  <Switch
+                    checked={orcamentoAbaixoMediaAtivado}
+                    onCheckedChange={setOrcamentoAbaixoMediaAtivado}
+                  />
+                </div>
+                <span className={`font-mono px-2 py-0.5 rounded text-xs transition-colors ${orcamentoAbaixoMediaAtivado ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  {orcamentoAbaixoMediaAtivado ? `-${orcamentoAbaixoMediaPercentual}% da média` : "Desativado"}
+                </span>
+              </Label>
+              <p className="text-[11px] text-muted-foreground mb-3 mt-2 leading-relaxed">
+                Se ativado, logo após enviar a proposta no 99Freelas, o Sender clicará em "Melhorar proposta", extrairá o valor médio das propostas concorrentes e ajustará seu orçamento para ficar na margem abaixo da média configurada.
+              </p>
+
+              {orcamentoAbaixoMediaAtivado && (
+                <div className="space-y-3 pt-1 animate-in fade-in slide-in-from-top-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      { id: "5" as const, label: "5% abaixo", val: 5 },
+                      { id: "10" as const, label: "10% abaixo", val: 10 },
+                      { id: "25" as const, label: "25% abaixo", val: 25 },
+                      { id: "outro" as const, label: "Outro", val: orcamentoAbaixoMediaPercentual },
+                    ].map((opt) => {
+                      const active = orcamentoAbaixoMediaModo === opt.id;
+                      return (
+                        <Button
+                          key={opt.id}
+                          type="button"
+                          variant={active ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setOrcamentoAbaixoMediaModo(opt.id);
+                            if (opt.id !== "outro") {
+                              setOrcamentoAbaixoMediaPercentual(opt.val);
+                            }
+                          }}
+                          className="text-xs font-medium"
+                        >
+                          {opt.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {orcamentoAbaixoMediaModo === "outro" && (
+                    <div className="flex items-center gap-3 pt-1">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                        Percentual personalizado (0.0 a 100.0%):
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={orcamentoAbaixoMediaPercentual}
+                        onChange={(e) => {
+                          const raw = parseFloat(e.target.value);
+                          if (Number.isNaN(raw)) {
+                            setOrcamentoAbaixoMediaPercentual(0);
+                          } else {
+                            setOrcamentoAbaixoMediaPercentual(Math.max(0, Math.min(100, raw)));
+                          }
+                        }}
+                        className="max-w-[140px] border-border/50 bg-background/40 font-mono text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-border/50">

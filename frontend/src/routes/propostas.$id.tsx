@@ -108,6 +108,12 @@ function PropostaEditor() {
       
       const json = res.data;
       if (json) {
+        if (typeof json.valor_proposta === "number" && json.valor_proposta > 0) {
+          setValor(json.valor_proposta);
+        }
+        if (typeof json.proposta_ia === "string" && json.proposta_ia.trim().length > 0) {
+          setText(json.proposta_ia);
+        }
         toast.success(json.message);
         setIsSentLocal(true);
       } else {
