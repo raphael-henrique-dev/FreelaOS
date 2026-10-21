@@ -57,3 +57,5 @@ artifacts
 settings.json
 .agents
 backend/tests
+videos
+skills-lock.json
