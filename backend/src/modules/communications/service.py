@@ -59,6 +59,14 @@ class SenderService:
 
     @staticmethod
     def _extract_preco_medio(page) -> float | None:
+        div_selectors = [
+            "div.preco-medio",
+            "div.preco_medio",
+            "div.media-propostas",
+            "div.media_propostas",
+            "div[class*='preco'][class*='medio']",
+            "div[class*='media'][class*='proposta']",
+        ]
         selectors = [
             "text=/preço médio/i",
             "text=/preco medio/i",
@@ -70,6 +78,56 @@ class SenderService:
             r"m[eé]dia\s+das\s+propostas[^r$0-9]{0,30}r\$\s*([\d\.\,]+)",
             r"r\$\s*([\d\.\,]+)",
         ]
+
+        for selector in div_selectors:
+            try:
+                locator = page.locator(selector).first
+                if locator.count() == 0:
+                    continue
+                text = locator.inner_text(timeout=2000)
+                for pattern in patterns:
+                    match = re.search(pattern, text, re.IGNORECASE)
+                    if match:
+                        parsed = SenderService._parse_money_value(match.group(1))
+                        if parsed is not None:
+                            return parsed
+            except Exception:
+                continue
+
+        try:
+            div_texts = page.evaluate("""
+                () => {
+                    const divs = Array.from(document.querySelectorAll("div"));
+                    return divs
+                        .filter((div) => {
+                            const className = String(div.className || "").toLowerCase();
+                            const text = String(div.textContent || "").toLowerCase();
+                            return (
+                                text.includes("r$") &&
+                                (
+                                    className.includes("preco") ||
+                                    className.includes("preço") ||
+                                    className.includes("media") ||
+                                    text.includes("preço médio") ||
+                                    text.includes("preco medio") ||
+                                    text.includes("média das propostas") ||
+                                    text.includes("media das propostas")
+                                )
+                            );
+                        })
+                        .map((div) => String(div.textContent || ""));
+                }
+            """)
+            if isinstance(div_texts, list):
+                for text in div_texts:
+                    for pattern in patterns:
+                        match = re.search(pattern, str(text), re.IGNORECASE)
+                        if match:
+                            parsed = SenderService._parse_money_value(match.group(1))
+                            if parsed is not None:
+                                return parsed
+        except Exception:
+            pass
 
         for selector in selectors:
             try:
