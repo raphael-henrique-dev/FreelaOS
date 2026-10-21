@@ -9,7 +9,7 @@ class SubmitRequest(BaseModel):
     vaga_id: str
     user_id: str
     texto: str
-    valor: int
+    valor: float
     prazo: str
 
 class MessageUpdate(BaseModel):

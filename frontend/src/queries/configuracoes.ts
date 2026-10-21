@@ -42,7 +42,15 @@ export function useConfiguracoesData() {
         const { data: newConfig } = await supabase.from("configuracoes_usuario").insert({
           perfil_id: user.id,
           integracoes: defaultIntJson,
-          modelos_proposta: { ativo: "padrao", personalizado_prompt: "", limite_automacao: 70, automacao_ativada: true }
+          modelos_proposta: {
+            ativo: "padrao",
+            personalizado_prompt: "",
+            limite_automacao: 70,
+            automacao_ativada: true,
+            limite_descarte: 30,
+            enviar_abaixo_media_ativo: false,
+            enviar_abaixo_media_percentual: 5
+          }
         }).select().single();
         config = newConfig;
       }

@@ -106,11 +106,17 @@ function ConfigPage({ initialData }: { initialData: any }) {
 
   const [integracoes, setIntegracoes] = useState(initialIntegrations);
   
-  const [modeloAtivo, setModeloAtivo] = useState(Array.isArray(config.modelos_proposta) ? "padrao" : (config.modelos_proposta?.ativo || "padrao"));
-  const [promptPersonalizado, setPromptPersonalizado] = useState(config.modelos_proposta?.personalizado_prompt ?? "");
-  const [limiteAutomacao, setLimiteAutomacao] = useState(config.modelos_proposta?.limite_automacao ?? 70);
-  const [limiteDescarte, setLimiteDescarte] = useState(config.modelos_proposta?.limite_descarte ?? 30);
-  const [automacaoAtivada, setAutomacaoAtivada] = useState(config.modelos_proposta?.automacao_ativada ?? true);
+  const modelosPropostaConfig = Array.isArray(config.modelos_proposta) ? {} : (config.modelos_proposta || {});
+  const [modeloAtivo, setModeloAtivo] = useState(modelosPropostaConfig.ativo || "padrao");
+  const [promptPersonalizado, setPromptPersonalizado] = useState(modelosPropostaConfig.personalizado_prompt ?? "");
+  const [limiteAutomacao, setLimiteAutomacao] = useState(modelosPropostaConfig.limite_automacao ?? 70);
+  const [limiteDescarte, setLimiteDescarte] = useState(modelosPropostaConfig.limite_descarte ?? 30);
+  const [automacaoAtivada, setAutomacaoAtivada] = useState(modelosPropostaConfig.automacao_ativada ?? true);
+  const [enviarAbaixoMediaAtivo, setEnviarAbaixoMediaAtivo] = useState(modelosPropostaConfig.enviar_abaixo_media_ativo ?? false);
+  const initialPercentualAbaixoMedia = Number(modelosPropostaConfig.enviar_abaixo_media_percentual ?? 5);
+  const initialPreset = [5, 10, 25].includes(initialPercentualAbaixoMedia) ? String(initialPercentualAbaixoMedia) : "custom";
+  const [abaixoMediaPreset, setAbaixoMediaPreset] = useState(initialPreset);
+  const [abaixoMediaCustom, setAbaixoMediaCustom] = useState(initialPreset === "custom" ? initialPercentualAbaixoMedia : 5);
   const [revisaoHumana, setRevisaoHumana] = useState(config.revisao_humana_obrigatoria ?? true);
   const [intervalHours, setIntervalHours] = useState(config.interval_hours ?? 3);
 
@@ -221,6 +227,10 @@ function ConfigPage({ initialData }: { initialData: any }) {
 
   const handleSave = async () => {
     const integracoesJson = integracoes.reduce((acc, curr) => ({ ...acc, [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive } }), {});
+    const percentualAbaixoMedia = Math.max(
+      0,
+      Math.min(100, Number(abaixoMediaPreset === "custom" ? abaixoMediaCustom : Number(abaixoMediaPreset)) || 0)
+    );
     
     await saveConfig({
       userId,
@@ -230,7 +240,15 @@ function ConfigPage({ initialData }: { initialData: any }) {
       },
       configPayload: {
         integracoes: integracoesJson,
-        modelos_proposta: { ativo: modeloAtivo, personalizado_prompt: promptPersonalizado, limite_automacao: limiteAutomacao, automacao_ativada: automacaoAtivada, limite_descarte: limiteDescarte },
+        modelos_proposta: {
+          ativo: modeloAtivo,
+          personalizado_prompt: promptPersonalizado,
+          limite_automacao: limiteAutomacao,
+          automacao_ativada: automacaoAtivada,
+          limite_descarte: limiteDescarte,
+          enviar_abaixo_media_ativo: enviarAbaixoMediaAtivo,
+          enviar_abaixo_media_percentual: percentualAbaixoMedia
+        },
         revisao_humana_obrigatoria: revisaoHumana,
         interval_hours: intervalHours
       }
@@ -717,6 +735,61 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 onChange={(e) => setLimiteDescarte(parseInt(e.target.value))}
                 className="w-full accent-primary"
               />
+            </div>
+
+            <div className="pt-4 border-t border-border/50">
+              <Label className="text-xs text-muted-foreground flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span>Enviar orçamento abaixo da média</span>
+                  <Switch
+                    checked={enviarAbaixoMediaAtivo}
+                    onCheckedChange={setEnviarAbaixoMediaAtivo}
+                  />
+                </div>
+                <span className={`font-mono px-2 py-0.5 rounded text-xs transition-colors ${enviarAbaixoMediaAtivo ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  {abaixoMediaPreset === "custom" ? `${Math.max(0, Math.min(100, Number(abaixoMediaCustom) || 0)).toFixed(1)}%` : `${abaixoMediaPreset}%`}
+                </span>
+              </Label>
+              <p className="text-[11px] text-muted-foreground mb-3 mt-2">
+                Após enviar a proposta, o Sender pode comparar com o preço médio e ajustar automaticamente para ficar na margem configurada abaixo da média.
+              </p>
+              <div className={`grid gap-2 md:grid-cols-4 ${!enviarAbaixoMediaAtivo ? 'opacity-50 pointer-events-none' : ''}`}>
+                {[
+                  { id: "5", label: "5% abaixo" },
+                  { id: "10", label: "10% abaixo" },
+                  { id: "25", label: "25% abaixo" },
+                  { id: "custom", label: "Outro" }
+                ].map((option) => {
+                  const isSelected = abaixoMediaPreset === option.id;
+                  return (
+                    <button
+                      type="button"
+                      key={option.id}
+                      onClick={() => setAbaixoMediaPreset(option.id)}
+                      className={`rounded-lg border px-3 py-2 text-xs text-left transition-colors ${isSelected ? 'border-primary bg-primary/5 text-primary' : 'border-border/60 bg-background/40 hover:border-primary/40'}`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {abaixoMediaPreset === "custom" && (
+                <div className={!enviarAbaixoMediaAtivo ? 'opacity-50 pointer-events-none' : ''}>
+                  <Label className="text-[11px] text-muted-foreground mt-3 mb-1 block">Percentual personalizado (0.0 a 100.0)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={abaixoMediaCustom}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      setAbaixoMediaCustom(Number.isFinite(next) ? next : 0);
+                    }}
+                    className="h-9 border-border/50 bg-background/40"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="pt-4 border-t border-border/50">
