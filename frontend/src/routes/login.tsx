@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { api } from '@/core/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -158,7 +159,20 @@ function Login() {
           },
         })
         if (error) throw error
-        if (data.session) {
+        if (data.session && data.user) {
+          try {
+            await api.post('/api/privacy/consent', {
+              user_id: data.user.id,
+              consentimentos: [
+                { tipo: 'termos', versao: 'v1.0', aceito: true },
+                { tipo: 'privacidade', versao: 'v1.0', aceito: true },
+                { tipo: 'ia_terceiros', versao: 'v1.0', aceito: true },
+              ]
+            })
+          } catch (consentErr) {
+            console.error('Falha ao registrar consentimento inicial:', consentErr)
+          }
+
           toast.success('Olá! Finalize a criação da sua conta para continuar.')
           navigate({ to: '/onboarding' })
         } else if (data.user) {
@@ -522,7 +536,27 @@ function Login() {
                           className="mt-0.5 w-4 h-4 rounded border-border/60 bg-background/50 accent-primary cursor-pointer"
                         />
                         <span className="text-muted-foreground group-hover:text-foreground transition-colors leading-snug">
-                          Aceito os termos de uso e política de privacidade.
+                          Li e aceito os{' '}
+                          <a
+                            href="/termos"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-primary underline hover:text-primary/80"
+                          >
+                            Termos de Uso
+                          </a>{' '}
+                          e a{' '}
+                          <a
+                            href="/privacidade"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-primary underline hover:text-primary/80"
+                          >
+                            Política de Privacidade
+                          </a>{' '}
+                          (LGPD).
                         </span>
                       </label>
                       <label className="flex items-start gap-2.5 cursor-pointer group">
@@ -558,6 +592,17 @@ function Login() {
                     )}
                   </Button>
                 </form>
+
+                <div className="pt-2 text-center text-[11px] text-muted-foreground/70">
+                  Protegido pela LGPD ·{' '}
+                  <a href="/termos" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                    Termos de Uso
+                  </a>{' '}
+                  ·{' '}
+                  <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                    Política de Privacidade
+                  </a>
+                </div>
               </div>
             )}
           </div>

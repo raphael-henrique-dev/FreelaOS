@@ -9,9 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as ProjetosRouteImport } from './routes/projetos'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as OportunidadesRouteImport } from './routes/oportunidades'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
@@ -27,6 +29,11 @@ import { Route as OportunidadesIndexRouteImport } from './routes/oportunidades.i
 import { Route as PropostasIdRouteImport } from './routes/propostas.$id'
 import { Route as OportunidadesIdRouteImport } from './routes/oportunidades.$id'
 
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -40,6 +47,11 @@ const PropostasRoute = PropostasRouteImport.update({
 const ProjetosRoute = ProjetosRouteImport.update({
   id: '/projetos',
   path: '/projetos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OportunidadesRoute = OportunidadesRouteImport.update({
@@ -124,9 +136,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
+  '/privacidade': typeof PrivacidadeRoute
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/oportunidades/': typeof OportunidadesIndexRoute
@@ -142,8 +156,10 @@ export interface FileRoutesByTo {
   '/inbox': typeof InboxRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/projetos': typeof ProjetosRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/oportunidades': typeof OportunidadesIndexRoute
@@ -161,9 +177,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/oportunidades': typeof OportunidadesRouteWithChildren
+  '/privacidade': typeof PrivacidadeRoute
   '/projetos': typeof ProjetosRoute
   '/propostas': typeof PropostasRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
   '/oportunidades/$id': typeof OportunidadesIdRoute
   '/propostas/$id': typeof PropostasIdRoute
   '/oportunidades/': typeof OportunidadesIndexRoute
@@ -182,9 +200,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/oportunidades'
+    | '/privacidade'
     | '/projetos'
     | '/propostas'
     | '/sitemap.xml'
+    | '/termos'
     | '/oportunidades/$id'
     | '/propostas/$id'
     | '/oportunidades/'
@@ -200,8 +220,10 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/login'
     | '/onboarding'
+    | '/privacidade'
     | '/projetos'
     | '/sitemap.xml'
+    | '/termos'
     | '/oportunidades/$id'
     | '/propostas/$id'
     | '/oportunidades'
@@ -218,9 +240,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/oportunidades'
+    | '/privacidade'
     | '/projetos'
     | '/propostas'
     | '/sitemap.xml'
+    | '/termos'
     | '/oportunidades/$id'
     | '/propostas/$id'
     | '/oportunidades/'
@@ -238,13 +262,22 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   OportunidadesRoute: typeof OportunidadesRouteWithChildren
+  PrivacidadeRoute: typeof PrivacidadeRoute
   ProjetosRoute: typeof ProjetosRoute
   PropostasRoute: typeof PropostasRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermosRoute: typeof TermosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -264,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/projetos'
       fullPath: '/projetos'
       preLoaderRoute: typeof ProjetosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oportunidades': {
@@ -406,9 +446,11 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   OportunidadesRoute: OportunidadesRouteWithChildren,
+  PrivacidadeRoute: PrivacidadeRoute,
   ProjetosRoute: ProjetosRoute,
   PropostasRoute: PropostasRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermosRoute: TermosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

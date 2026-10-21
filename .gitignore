@@ -25,6 +25,7 @@ venv/
 env/
 agents/venv/
 agents/.venv/
+.agents
 playwright_sessions/*
 playwright_sessions/Default
 playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/Default
@@ -53,9 +54,17 @@ playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/Default
 agents/playwright_sessions/9b6a917c-58ec-4380-9c50-3b2368e123f4/99freelas/first_party_sets.db
 playwright_sessions/
 
+# Supabase
+supabase/.temp/
+
 artifacts
 settings.json
+<<<<<<< HEAD
 .agents
 backend/tests
 videos
 skills-lock.json
+=======
+
+backend/tests/
+>>>>>>> lgdp_adeq

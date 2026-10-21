@@ -1,6 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Github, Linkedin, Sparkles, Zap, Save, Loader2, Trash2 } from "lucide-react";
+import { 
+  Github, 
+  Linkedin, 
+  Sparkles, 
+  Zap, 
+  Save, 
+  Loader2, 
+  Trash2,
+  ShieldCheck,
+  Download,
+  AlertTriangle,
+  ExternalLink,
+  CheckCircle2
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
@@ -58,6 +71,7 @@ function ConfigPageWrapper() {
 
 function ConfigPage({ initialData }: { initialData: any }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { mutateAsync: saveConfig, isPending: saving } = useSaveConfiguracoes();
 
   const userId = initialData.user.id;
@@ -65,6 +79,54 @@ function ConfigPage({ initialData }: { initialData: any }) {
   // Parse initial data
   const perfil = initialData.perfil || {};
   const config = initialData.config || {};
+
+  // LGPD Privacy & Data Rights State
+  const [exportingData, setExportingData] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      const res = await api.get(`/api/privacy/export?user_id=${userId}`);
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(res.data, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `freelaos-dados-pessoais-${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      toast.success("Dados pessoais exportados com sucesso!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Falha ao exportar dados.");
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmInput.trim() !== "EXCLUIR") {
+      toast.error("Digite exatamente EXCLUIR para confirmar a exclusão definitiva.");
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      await api.delete("/api/privacy/account", {
+        data: {
+          user_id: userId,
+          confirmacao: "EXCLUIR",
+        },
+      });
+      toast.success("Sua conta e todos os dados foram eliminados permanentemente.");
+      setDeleteModalOpen(false);
+      await supabase.auth.signOut();
+      navigate({ to: "/login" });
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || "Erro ao excluir conta.");
+      setDeletingAccount(false);
+    }
+  };
 
   // Perfil State
   const [nome, setNome] = useState(perfil.nome || "");
@@ -868,7 +930,127 @@ function ConfigPage({ initialData }: { initialData: any }) {
             ))}
           </CardContent>
         </Card>
+
+        {/* PRIVACIDADE E PROTEÇÃO DE DADOS (LGPD) */}
+        <Card className="border-border/60 bg-card/60 lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Privacidade e Proteção de Dados (LGPD)</CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Gerencie seus direitos como titular sob a Lei Federal nº 13.709/2018 (Lei Geral de Proteção de Dados).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Status e Diretrizes */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-1">
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Termos de Uso
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Versão v1.0 vigente e aceita.
+                </p>
+                <a
+                  href="/termos"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-primary underline inline-flex items-center gap-1 pt-1 hover:text-primary/80"
+                >
+                  Consultar termos <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              </div>
+
+              <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-1">
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Política de Privacidade
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Versão v1.0 com ciclo de retenção ativo.
+                </p>
+                <a
+                  href="/privacidade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-primary underline inline-flex items-center gap-1 pt-1 hover:text-primary/80"
+                >
+                  Consultar política <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              </div>
+
+              <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-1">
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Minimização de PII (IA)
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Higienização ativa contra vazamento de e-mails, telefones e CPFs/CNPJs.
+                </p>
+              </div>
+            </div>
+
+            {/* Portabilidade de Dados (Artigo 18, II e V) */}
+            <div className="rounded-xl border border-border/50 bg-background/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Download className="h-4 w-4 text-primary" />
+                  Portabilidade e Acesso aos Dados (Art. 18, II e V)
+                </h4>
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  Obtenha uma cópia completa de todos os seus dados cadastrais, histórico de propostas, oportunidades captadas, clientes e mensagens em formato JSON estruturado.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportData}
+                disabled={exportingData}
+                className="whitespace-nowrap gap-2 text-xs border-border/70 hover:bg-muted/40 cursor-pointer"
+              >
+                {exportingData ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Exportando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5" /> Exportar Dados (JSON)
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Zona de Perigo: Eliminação Definitiva (Artigo 18, VI) */}
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-destructive flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Eliminação Definitiva da Conta (Art. 18, VI)
+                </h4>
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  Exercício do direito de esquecimento. Esta ação exclui permanentemente seu perfil, todas as vagas rastreadas, propostas geradas, contatos, logs de agentes e arquivos de sessão do navegador.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setDeleteConfirmInput("");
+                  setDeleteModalOpen(true);
+                }}
+                className="whitespace-nowrap gap-2 text-xs font-semibold cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Excluir Minha Conta
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
       <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -888,6 +1070,69 @@ function ConfigPage({ initialData }: { initialData: any }) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAuthModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleAuthSubmit}>Injetar Sessão</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Exclusão de Conta LGPD */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="sm:max-w-[480px] border-destructive/40 bg-card/95 backdrop-blur-xl">
+          <DialogHeader className="space-y-2">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <DialogTitle className="text-base font-bold">
+                Excluir Conta Permanentemente
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Você está prestes a exercer o seu direito à eliminação de dados (Art. 18, VI da LGPD).
+              Todos os seus dados pessoais, configurações, propostas, histórico de oportunidades e arquivos
+              de sessão Playwright serão <strong>apagados imediatamente sem possibilidade de recuperação</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-3 text-xs">
+            <p className="text-foreground font-medium">
+              Para prosseguir, digite a palavra <strong className="text-destructive font-mono">EXCLUIR</strong> no campo abaixo:
+            </p>
+            <Input
+              type="text"
+              value={deleteConfirmInput}
+              onChange={(e) => setDeleteConfirmInput(e.target.value)}
+              placeholder="Digite EXCLUIR"
+              className="border-destructive/40 bg-background/50 font-mono text-center tracking-wider text-sm focus-visible:ring-destructive"
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={deletingAccount}
+              onClick={() => setDeleteModalOpen(false)}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={deletingAccount || deleteConfirmInput.trim() !== "EXCLUIR"}
+              onClick={handleDeleteAccount}
+              className="text-xs font-semibold gap-1.5"
+            >
+              {deletingAccount ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Excluindo Dados...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" /> Confirmar Exclusão
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
