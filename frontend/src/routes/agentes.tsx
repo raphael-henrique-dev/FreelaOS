@@ -355,8 +355,7 @@ function AgentCard({
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div
-              className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-border/50 text-2xl shadow-elegant"
-              style={{ background: `color-mix(in oklab, ${agent.color} 30%, transparent)` }}
+              className="grid h-14 w-14 shrink-0 place-items-center text-2xl"
             >
               {agent.emoji}
             </div>
