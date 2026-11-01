@@ -59,12 +59,7 @@ supabase/.temp/
 
 artifacts
 settings.json
-<<<<<<< HEAD
 .agents
 backend/tests
 videos
 skills-lock.json
-=======
-
-backend/tests/
->>>>>>> lgdp_adeq
