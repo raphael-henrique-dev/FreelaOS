@@ -17,6 +17,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/core/api";
+import { getLocalLLMKeys } from "@/lib/llm-keys";
 import { Bell, MessageSquare, ShieldCheck, Loader2, ExternalLink } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -233,6 +234,16 @@ function RootComponent() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       userId = session.user.id;
+
+      // Hidrata imediatamente as chaves BYOK salvas no navegador na memória RAM do backend
+      const localKeys = getLocalLLMKeys();
+      if (Object.keys(localKeys).length > 0) {
+        try {
+          await api.post('/api/auth/llm-keys', { user_id: userId, keys: localKeys });
+        } catch (err) {
+          console.warn("Erro ao sincronizar chaves BYOK em memória:", err);
+        }
+      }
 
       // Chama o backend para garantir que o script de Playwright inicie a raspagem para este usuário
       api.post('/api/inbox/start', { user_id: userId }).catch(err => {

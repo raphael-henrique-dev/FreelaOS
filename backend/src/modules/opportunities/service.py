@@ -1,7 +1,7 @@
-from backend.src.core.llm_client import generate_json
+from backend.src.core.llm_client import generate_json, _get_active_llm, MissingAPIKeyError
 from backend.src.modules.opportunities.repository import OpportunityRepository, ProfileRepository, ClientRepository
-from backend.src.core.llm_client import _get_active_llm
 from backend.src.core.pii_sanitizer import sanitize_pii
+from backend.src.core.activity_logger import AgentActivityLogger
 
 opp_repo = OpportunityRepository()
 profile_repo = ProfileRepository()
@@ -54,8 +54,12 @@ class AnalistaService:
         }}
         """
 
-        active_llm = _get_active_llm(user_id)
-        dados_ia = generate_json(prompt, provedor=active_llm)
+        active_llm = _get_active_llm(user_id, "analista")
+        try:
+            dados_ia = generate_json(prompt, provedor=active_llm, user_id=user_id)
+        except MissingAPIKeyError as e:
+            AgentActivityLogger.log(user_id, "Analista", str(e), "alerta", 2, {"vaga_id": vaga_id})
+            raise
 
         novo_score = dados_ia.get("SCORE", 0)
         nova_explicacao = dados_ia.get("EXPLICACAO", "Análise não retornou justificativa.")
@@ -147,8 +151,12 @@ Orçamento: R$ {vaga.get('orcamento')}
   "prazo": "7 dias"
 }}
 """
-        active_llm = _get_active_llm(user_id)                   ## para o redator modelos especificios se mostraram mais eficientes - TESTES SENDO REALIZADOS
-        dados_ia = generate_json(sys_prompt, provedor="openrouter", force_json=True)
+        active_llm = _get_active_llm(user_id, "redator")
+        try:
+            dados_ia = generate_json(sys_prompt, provedor=active_llm, force_json=True, user_id=user_id)
+        except MissingAPIKeyError as e:
+            AgentActivityLogger.log(user_id, "Redator", str(e), "alerta", 3, {"vaga_id": vaga_id})
+            raise
         
         texto_proposta = dados_ia.get("texto_proposta", "") 
         valor_proposta = dados_ia.get("valor", 0)
@@ -189,8 +197,12 @@ class ScoutService:
         {texto_limpo}
         """
 
-        active_llm = _get_active_llm(perfil_id)
-        dados_ia = generate_json(prompt, provedor=active_llm, force_json=True)
+        active_llm = _get_active_llm(perfil_id, "scout")
+        try:
+            dados_ia = generate_json(prompt, provedor=active_llm, force_json=True, user_id=perfil_id)
+        except MissingAPIKeyError as e:
+            AgentActivityLogger.log(perfil_id, "Scout", str(e), "alerta", 1, {"plataforma": plataforma})
+            raise
 
         cliente_nome = dados_ia.get("CLIENTE", "Confidencial")
         

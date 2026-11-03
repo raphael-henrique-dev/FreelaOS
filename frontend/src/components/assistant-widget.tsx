@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { api } from "@/core/api";
 import { supabase } from "@/lib/supabase";
+import { getEncodedLLMKeysHeader } from "@/lib/llm-keys";
+import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,12 +56,18 @@ export function AssistantWidget() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
 
+      const encodedKeys = getEncodedLLMKeysHeader();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      };
+      if (encodedKeys) {
+        headers['X-FreelaOS-LLM-Keys'] = encodedKeys;
+      }
+
       const response = await fetch(`${api.defaults.baseURL || 'http://localhost:8000'}/api/assistant/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
+        headers,
         body: JSON.stringify({
           message: userMessage,
           user_id: session.user.id
@@ -85,7 +93,8 @@ export function AssistantWidget() {
             try {
               const data = JSON.parse(event.replace("data: ", ""));
               if (data.error) {
-                assistantContent += `\n\n**Erro:** ${data.error}`;
+                toast.error(data.error);
+                assistantContent += `\n\n**Aviso:** ${data.error}`;
               } else if (data.text) {
                 assistantContent += data.text;
               }

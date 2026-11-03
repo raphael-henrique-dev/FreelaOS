@@ -1,6 +1,7 @@
 import axios from "axios";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { getEncodedLLMKeysHeader } from "@/lib/llm-keys";
 
 export const api = axios.create({
   // Configuração da baseURL para o ambiente de desenvolvimento ou produção. Se for produção na nuvem a variavel de ambiente
@@ -18,6 +19,13 @@ api.interceptors.request.use(async (config) => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.access_token) {
     config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  const url = config.url || "";
+  if (!url.includes("/api/auth/logout") && !url.includes("/api/privacy/account")) {
+    const encodedKeys = getEncodedLLMKeysHeader();
+    if (encodedKeys) {
+      config.headers["X-FreelaOS-LLM-Keys"] = encodedKeys;
+    }
   }
   return config;
 });

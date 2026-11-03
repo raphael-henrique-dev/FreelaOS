@@ -241,7 +241,6 @@ function Dashboard() {
                 <div key={a.id} className="flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 p-3">
                   <div
                     className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-lg"
-                    style={{ background: `color-mix(in oklab, ${a.color} 20%, transparent)` }}
                   >
                     {a.emoji}
                   </div>

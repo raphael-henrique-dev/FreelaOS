@@ -87,3 +87,4 @@
 3. **Higienização Pré-LLM:** Mascaramento obrigatório de dados de contato (e-mails, números de telefone, CPFs, CNPJs) antes do envio a provedores externos de IA.
 4. **Isolamento de Credenciais:** As sessões de automação em disco (`playwright_sessions/<perfil_id>`) são restritas ao contêiner de execução, não expostas na API pública e expurgadas na exclusão de conta.
 5. **Auditoria de Acesso:** Verificação estrita de titularidade do token JWT via `verify_user_ownership` em todos os endpoints de manipulação de dados pessoais.
+6. **Chaves de API de IA em Memória Volátil (BYOK Proxy):** As credenciais de provedores de LLM (OpenAI, Claude, Groq, Gemini, NVIDIA NIM, OpenRouter) são fornecidas pelo titular na interface e trafegam sob TLS apenas para armazenamento efêmero em memória RAM no backend, nunca sendo persistidas no banco de dados PostgreSQL/Supabase e sendo expurgadas automaticamente no logout.

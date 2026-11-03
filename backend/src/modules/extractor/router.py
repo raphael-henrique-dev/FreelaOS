@@ -92,7 +92,15 @@ def get_activities(user_id: str, limit: int = 50, current_user: dict = Depends(g
 @router.post("/api/extractor/run")
 def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     from fastapi import HTTPException
+    from backend.src.core.llm_client import _get_active_llm, get_user_key, PROVIDER_NAMES
+    from backend.src.core.activity_logger import AgentActivityLogger
     if req.user_id != current_user['user_id']: raise HTTPException(status_code=403)
+    scout_llm = _get_active_llm(req.user_id, "scout")
+    if not get_user_key(req.user_id, scout_llm):
+        prov_label = PROVIDER_NAMES.get(scout_llm, scout_llm.upper())
+        msg = f"Chave de API para {prov_label} não configurada em memória. Acesse Configurações -> Motores e Provedores de I.A para informar sua API Key."
+        AgentActivityLogger.log(req.user_id, "Scout", msg, "alerta", 1)
+        raise HTTPException(status_code=400, detail=msg)
     BrowserManager.clear_cancelled(req.user_id)
     background_tasks.add_task(executar_extracao, req.user_id, True)
     return {"mensagem": "Extrator disparado! Ele varrerá a web em segundo plano."}
@@ -100,7 +108,15 @@ def trigger_extraction(req: ExtractorRequest, background_tasks: BackgroundTasks,
 @router.post("/api/extractor/run-url")
 def trigger_url_extraction(req: UrlExtractorRequest, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     from fastapi import HTTPException
+    from backend.src.core.llm_client import _get_active_llm, get_user_key, PROVIDER_NAMES
+    from backend.src.core.activity_logger import AgentActivityLogger
     if req.user_id != current_user['user_id']: raise HTTPException(status_code=403)
+    scout_llm = _get_active_llm(req.user_id, "scout")
+    if not get_user_key(req.user_id, scout_llm):
+        prov_label = PROVIDER_NAMES.get(scout_llm, scout_llm.upper())
+        msg = f"Chave de API para {prov_label} não configurada em memória. Acesse Configurações -> Motores e Provedores de I.A para informar sua API Key."
+        AgentActivityLogger.log(req.user_id, "Scout", msg, "alerta", 1)
+        raise HTTPException(status_code=400, detail=msg)
     BrowserManager.clear_cancelled(req.user_id)
     background_tasks.add_task(executar_extracao_url, req.user_id, req.url)
     return {"mensagem": "Extração de URL iniciada! Ela será processada em background."}
