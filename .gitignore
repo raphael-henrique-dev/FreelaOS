@@ -63,5 +63,8 @@ settings.json
 backend/tests
 videos
 skills-lock.json
+<<<<<<< HEAD
 
 backend/tests/
+=======
+>>>>>>> assistente

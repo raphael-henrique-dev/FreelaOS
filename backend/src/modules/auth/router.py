@@ -3,6 +3,7 @@ from backend.src.core.auth import get_current_user
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backend.src.modules.auth.service import AuthService
+from backend.src.core.llm_client import set_user_keys, get_user_configured_providers, clear_user_keys
 
 router = APIRouter()
 
@@ -13,6 +14,63 @@ class AuthRequest(BaseModel):
 class GithubSyncRequest(BaseModel):
     user_id: str
     provider_token: str | None = None
+
+class LLMKeysSyncRequest(BaseModel):
+    user_id: str
+    keys: dict[str, str | None] = {}
+    replace_all: bool = False
+
+class LLMKeysClearRequest(BaseModel):
+    user_id: str
+    provedor: str | None = None
+
+@router.post("/api/auth/llm-keys")
+def sync_llm_keys(req: LLMKeysSyncRequest, current_user: dict = Depends(get_current_user)):
+    """Sincroniza as chaves de API do usuário exclusivamente na memória RAM volátil do servidor."""
+    if req.user_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    configured = set_user_keys(req.user_id, req.keys, replace_all=req.replace_all)
+    # Invalida cache do agente assistente para que ele recrie com a chave nova
+    try:
+        from backend.src.modules.assistant.router import active_agents
+        active_agents.pop(req.user_id, None)
+    except Exception:
+        pass
+    return {
+        "status": "success",
+        "configured": configured,
+        "configured_providers": [p for p, ok in configured.items() if ok],
+    }
+
+@router.get("/api/auth/llm-keys/status")
+def status_llm_keys(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Retorna quais provedores possuem chave ativa em memória RAM (sem expor o valor das chaves)."""
+    if user_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    configured = get_user_configured_providers(user_id)
+    return {
+        "status": "success",
+        "configured": configured,
+        "configured_providers": [p for p, ok in configured.items() if ok],
+    }
+
+@router.delete("/api/auth/llm-keys")
+def delete_llm_keys(req: LLMKeysClearRequest, current_user: dict = Depends(get_current_user)):
+    """Remove uma chave específica ou todas as chaves de IA da memória RAM do servidor."""
+    if req.user_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    clear_user_keys(req.user_id, req.provedor)
+    try:
+        from backend.src.modules.assistant.router import active_agents
+        active_agents.pop(req.user_id, None)
+    except Exception:
+        pass
+    configured = get_user_configured_providers(req.user_id)
+    return {
+        "status": "success",
+        "configured": configured,
+        "configured_providers": [p for p, ok in configured.items() if ok],
+    }
 
 @router.post("/api/auth/logout")
 def logout_usuario(req: AuthRequest, current_user: dict = Depends(get_current_user)):
@@ -108,5 +166,7 @@ def sync_github_portfolio(req: GithubSyncRequest, current_user: dict = Depends(g
             return {"status": "success", "message": "Portfólio do GitHub sincronizado."}
         else:
             return {"status": "error", "message": "Não foi possível sincronizar o portfólio."}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

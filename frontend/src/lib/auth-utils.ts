@@ -1,10 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { api } from "@/core/api";
+import { clearLocalLLMKeys } from "@/lib/llm-keys";
 import type { QueryClient } from "@tanstack/react-query";
 
 /**
  * Executa o protocolo completo de logout do FreelaOS:
- * 1. Notifica o backend para finalizar loops e monitoramento em background do usuário.
+ * 1. Limpa chaves BYOK locais e notifica o backend para finalizar loops e limpar chaves em RAM do usuário.
  * 2. Faz o signOut global no Supabase.
  * 3. Desinscreve todos os canais Realtime do Supabase.
  * 4. Limpa todo o cache de queries do TanStack Query.
@@ -13,6 +14,9 @@ import type { QueryClient } from "@tanstack/react-query";
  */
 export async function performFullLogout(queryClient?: QueryClient | null) {
   try {
+    // 0. Limpar chaves de API de LLM locais imediatamente
+    clearLocalLLMKeys();
+
     // 1. Notificar backend se houver sessão
     const { data } = await supabase.auth.getSession();
     const userId = data?.session?.user?.id;

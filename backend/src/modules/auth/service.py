@@ -4,18 +4,24 @@ import httpx
 import json
 from playwright.sync_api import sync_playwright
 from backend.src.core.database import db
-from backend.src.core.llm_client import generate_text
+from backend.src.core.llm_client import generate_text, _get_active_llm, clear_user_keys
 from backend.src.modules.opportunities.repository import ProfileRepository
-from backend.src.core.llm_client import _get_active_llm
 
 profile_repo = ProfileRepository()
 
 class AuthService:
     @staticmethod
     def encerrar_sessao_usuario(user_id: str):
-        """Para todas as tarefas e loops em background ativos para o usuário e encerra navegadores."""
+        """Para todas as tarefas e loops em background ativos para o usuário, encerra navegadores e limpa chaves em memória."""
         from backend.src.core.browser_manager import BrowserManager
         BrowserManager.cancel_user(user_id)
+        clear_user_keys(user_id)
+
+        try:
+            from backend.src.modules.assistant.router import active_agents
+            active_agents.pop(user_id, None)
+        except Exception:
+            pass
 
         try:
             from backend.src.modules.communications.inbox_monitor import active_monitors
@@ -325,8 +331,8 @@ PROJETOS
 - FreelaOS: Sistema centralizado de captação automática de freelas e gestão de projetos com integração de agentes de I.A (React, JavaScript, Python)
 ..."""
 
-        active_model = _get_active_llm(user_id)
-        resumo = generate_text(prompt, provedor=active_model)
+        active_model = _get_active_llm(user_id, "analista")
+        resumo = generate_text(prompt, provedor=active_model, user_id=user_id)
         if not resumo:
             raise ValueError("Erro ao gerar resumo usando a inteligência artificial.")
             

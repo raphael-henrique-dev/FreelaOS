@@ -6,11 +6,12 @@ import { toast } from "sonner";
 export const defaultIntegrations = [
   { id: "99freelas", name: "99Freelas", desc: "Sincronize propostas e mensagens", enabled: false, ignoreExclusive: true },
   { id: "workana", name: "Workana", desc: "Coleta automática de projetos", enabled: false },
-  { id: "openai", name: "OpenAI", desc: "Motor generativo eficiente e popular", enabled: false },
-  { id: "claude", name: "Claude", desc: "Motor alternativo para propostas longas", enabled: false },
-  { id: "groq", name: "Groq", desc: "Motor alternativo do Groq. Rápido, Eficiente e Gratuito.", enabled: false },
-  { id: "gemini", name: "Google Gemini", desc: "Análise multimodal de briefings", enabled: false },
-  { id: "nvidia", name: "NVIDIA NIM", desc: "Acesso gratuito aos modelos gigantes open-source", enabled: false },
+  { id: "openai", name: "OpenAI", desc: "Motor generativo eficiente e popular (GPT-4o mini)", enabled: false },
+  { id: "claude", name: "Claude", desc: "Motor Anthropic excelente para propostas longas (Claude 3.5 Haiku)", enabled: false },
+  { id: "groq", name: "Groq", desc: "Motor de inferência ultrarrápida (Llama / GPT-OSS)", enabled: false },
+  { id: "gemini", name: "Google Gemini", desc: "Análise multimodal de briefings e Assistente Nexus (Gemini Flash)", enabled: false },
+  { id: "nvidia", name: "NVIDIA NIM", desc: "Acesso aos modelos open-source de grande porte (DeepSeek)", enabled: false },
+  { id: "openrouter", name: "OpenRouter", desc: "Roteador universal para múltiplos modelos gratuitos e pagos", enabled: false },
 ];
 
 export function useConfiguracoesData() {
@@ -78,12 +79,24 @@ export function useConfiguracoesData() {
         console.error("Erro ao checar status da workana:", e);
       }
 
+      // Verifica status das chaves BYOK na memória RAM do backend
+      let ramConfiguredProviders: string[] = [];
+      try {
+        const keysRes = await api.get(`/api/auth/llm-keys/status?user_id=${user.id}`);
+        if (keysRes.data?.configured_providers) {
+          ramConfiguredProviders = keysRes.data.configured_providers;
+        }
+      } catch (e) {
+        console.warn("Erro ao checar status das chaves LLM em memória:", e);
+      }
+
       return {
         user,
         perfil,
         config,
         isConnected99,
         isConnectedWorkana,
+        ramConfiguredProviders,
       };
     },
   });

@@ -88,6 +88,9 @@ function PrivacyPage() {
                 <em> Base Legal:</em> Legítimo Interesse (Art. 7º, IX da LGPD), mediante teste de balanceamento e aplicação de rotinas de sanitização prévia.
               </li>
               <li>
+                <strong className="text-foreground">Chaves de API de Inteligência Artificial (BYOK — Proxy em Memória):</strong> As chaves de API fornecidas pelo usuário (OpenAI, Claude, Groq, Gemini, NVIDIA NIM, OpenRouter) <strong>nunca são persistidas no banco de dados</strong>. O servidor atua exclusivamente como um proxy em memória RAM volátil durante a sessão ativa, descartando-as imediatamente no logout ou encerramento da conta.
+              </li>
+              <li>
                 <strong className="text-foreground">Logs de Atividades dos Agentes:</strong> Histórico de ações tomadas pelo Scout, Analista, Redator e Sender.
                 <em> Finalidade:</em> Transparência, auditabilidade e rastreabilidade para o próprio usuário na Dynamic Island e histórico de execução.
               </li>

@@ -1,11 +1,16 @@
-from fastapi import Depends
-from backend.src.core.auth import get_current_user, verify_user_ownership
-import os
-import json
-import asyncio
-from fastapi import APIRouter
+from fastapi import Depends, APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+import json
+import asyncio
+from backend.src.core.auth import get_current_user, verify_user_ownership
+from backend.src.core.llm_client import (
+    generate_text,
+    _get_active_llm,
+    get_user_key,
+    PROVIDER_LABELS,
+)
+from backend.src.core.activity_logger import AgentActivityLogger
 from backend.src.modules.assistant.agent import AssistantAgent
 
 router = APIRouter(prefix="/api/assistant", tags=["Assistant"])
@@ -17,16 +22,30 @@ class ChatRequest(BaseModel):
 # Memória cache para manter o histórico da conversa ativo por usuário durante o uso
 active_agents = {}
 
-from backend.src.core.llm_client import generate_text
 
 @router.post("/chat")
 async def assistant_chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
-    api_key = os.getenv("GEMINI_API_KEY")
+    verify_user_ownership(request.user_id, current_user)
+
+    provedor = _get_active_llm(request.user_id, "assistente")
+    api_key = get_user_key(request.user_id, provedor)
     if not api_key:
+        label = PROVIDER_LABELS.get(provedor, provedor.upper())
+        msg = (
+            f"Chave de API para '{label}' não configurada em memória para o Assistente. "
+            f"Acesse Configurações > Motores e Provedores de I.A (BYOK) e insira sua API Key."
+        )
+        AgentActivityLogger.log(
+            request.user_id,
+            "Assistente",
+            msg,
+            "alerta",
+            4,
+        )
         async def err():
-            yield f"data: {json.dumps({'error': 'GEMINI_API_KEY não configurada'})}\n\n"
+            yield f"data: {json.dumps({'error': msg})}\n\n"
         return StreamingResponse(err(), media_type="text/event-stream")
-        
+
     # Camada de Pré-processamento e Segurança (Firewall IA)
     security_prompt = f"""Você é um Firewall de IA ultra rígido.
 Analise a mensagem do usuário e verifique se há:
@@ -43,35 +62,38 @@ Mensagem do usuário: "{request.message}"
 Resposta:"""
     try:
         # Roda o filtro em thread separada para não bloquear o event loop do FastAPI
-        security_check = await asyncio.to_thread(generate_text, security_prompt, "gemini-lite")
+        security_check = await asyncio.to_thread(
+            generate_text, security_prompt, provedor, 1, request.user_id
+        )
         if "UNSAFE" in security_check.upper():
             async def sec_err():
                 yield f"data: {json.dumps({'text': 'Não tenho permissão para processar este tipo de solicitação por violar as diretrizes de segurança.'})}\n\n"
             return StreamingResponse(sec_err(), media_type="text/event-stream")
-    except Exception as e:
+    except Exception:
         # Falha silenciosa no filtro permite a execução normal (graceful degradation)
         pass
 
-    # Recupera ou cria a sessão do Jarvis para o usuário
-    if request.user_id not in active_agents:
-        active_agents[request.user_id] = AssistantAgent(api_key=api_key, user_id=request.user_id)
-        
+    # Recupera ou recria a sessão do Assistente caso o provedor ou chave tenha mudado
+    existing = active_agents.get(request.user_id)
+    if (
+        existing is None
+        or getattr(existing, "provedor", None) != provedor
+        or getattr(existing, "api_key", None) != api_key
+    ):
+        active_agents[request.user_id] = AssistantAgent(
+            api_key=api_key, user_id=request.user_id, provedor=provedor
+        )
+
     agent = active_agents[request.user_id]
-    
+
     # Gerador assíncrono para Server-Sent Events (SSE)
     async def event_stream():
         try:
-            # O stream_chat é um gerador síncrono da lib do google.genai.
-            # Iteramos sobre ele e repassamos pro frontend via SSE
             for chunk_text in agent.stream_chat(request.message):
-                # JSON dumps garante que quebras de linha e aspas não quebrem o protocolo SSE
                 safe_chunk = json.dumps({"text": chunk_text})
                 yield f"data: {safe_chunk}\n\n"
-                
-                # yield control to event loop
                 await asyncio.sleep(0.01)
-                
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
-            
+
     return StreamingResponse(event_stream(), media_type="text/event-stream")

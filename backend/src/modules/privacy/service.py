@@ -75,8 +75,13 @@ class PrivacyService:
         if not confirmacao or confirmacao.strip() != "EXCLUIR":
             raise ValueError("Confirmação inválida. É obrigatório digitar exatamente a palavra 'EXCLUIR'.")
 
-        # 1. Encerra imediatamente qualquer navegador em execução
+        # 1. Encerra imediatamente qualquer navegador em execução e limpa chaves em memória RAM
         BrowserManager.cancel_user(perfil_id)
+        try:
+            from backend.src.core.llm_client import clear_user_keys
+            clear_user_keys(perfil_id)
+        except Exception:
+            pass
 
         # 2. Remove de eventuais loops em background (Autopilot)
         try:

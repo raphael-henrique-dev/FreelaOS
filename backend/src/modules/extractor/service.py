@@ -36,6 +36,17 @@ def executar_extracao(user_id: str, manual: bool = False):
         logger.info(f"Execução de extração cancelada para o usuário {user_id}.")
         return
 
+    from backend.src.core.llm_client import _get_active_llm, get_user_key, PROVIDER_NAMES
+    from backend.src.core.activity_logger import AgentActivityLogger
+
+    scout_llm = _get_active_llm(user_id, "scout")
+    if not get_user_key(user_id, scout_llm):
+        prov_label = PROVIDER_NAMES.get(scout_llm, scout_llm.upper())
+        msg = f"Varredura pausada: configure sua API Key ({prov_label}) em Configurações."
+        logger.warning(f"[Extractor] {msg} (user_id={user_id})")
+        AgentActivityLogger.log(user_id, "Scout", msg, "alerta", 1)
+        return
+
     logger.info(f"Buscando configurações e perfil do usuário {user_id}...")
     
     perfil = repo_profile.get_profile(user_id)

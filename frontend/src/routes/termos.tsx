@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { FileText, ArrowLeft, CheckCircle2, AlertTriangle, Scale, ShieldCheck } from 'lucide-react'
+import { FileText, ArrowLeft, CheckCircle2, AlertTriangle, Scale, ShieldCheck, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/termos')({
@@ -37,7 +37,7 @@ function TermsPage() {
             Termos de Uso da Plataforma
           </h1>
           <p className="text-sm text-muted-foreground">
-            Versão vigente: <strong>v1.0</strong> · Última atualização: 13 de outubro de 2026
+            Versão vigente: <strong>v1.1</strong> · Última atualização: 01 de novembro de 2026
           </p>
         </div>
 
@@ -110,11 +110,34 @@ function TermsPage() {
             </p>
           </section>
 
-          {/* Seção 5 */}
+          {/* Seção 5 - BYOK e Proxy em Memória */}
+          <section className="space-y-3 p-6 rounded-2xl border border-primary/30 bg-primary/5 backdrop-blur-xl">
+            <div className="flex items-center gap-2.5 text-foreground font-semibold text-base">
+              <KeyRound className="h-4 w-4 text-primary" />
+              <h2>5. Chaves de API de Inteligência Artificial (Modelo BYOK e Proxy em Memória)</h2>
+            </div>
+            <p>
+              Para o funcionamento dos motores de Inteligência Artificial (Scout IA, Analista IA, Redator IA e Assistente Nexus), 
+              o FreelaOS opera no modelo <strong className="text-foreground">BYOK (Bring Your Own Key — Traga Sua Própria Chave)</strong>, 
+              no qual o próprio usuário fornece suas chaves de API dos provedores suportados (OpenAI, Claude, Groq, Google Gemini, NVIDIA NIM e OpenRouter) diretamente pela interface de Configurações.
+            </p>
+            <p>
+              <strong className="text-foreground">Atuação exclusiva como Proxy em Memória:</strong> Fica expressamente declarado que o servidor do FreelaOS 
+              age <strong>apenas como um proxy em memória RAM volátil</strong> para repassar as chamadas de inferência aos provedores de IA escolhidos pelo usuário. 
+              <strong className="text-foreground"> As chaves de API nunca são persistidas no banco de dados</strong> nem gravadas em disco no servidor.
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li>No navegador do usuário, as chaves permanecem apenas no armazenamento local (<em>localStorage</em>) sob controle exclusivo do titular.</li>
+              <li>No servidor, as chaves residem unicamente em estrutura efêmera na memória RAM durante a sessão ativa e são <strong>automaticamente destruídas</strong> no momento do logout, encerramento de sessão ou exclusão da conta.</li>
+              <li>O usuário é integralmente responsável pelo gerenciamento de limites de uso, faturamento e guarda de suas próprias chaves junto aos respectivos provedores de IA.</li>
+            </ul>
+          </section>
+
+          {/* Seção 6 */}
           <section className="space-y-3 p-6 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl">
             <div className="flex items-center gap-2.5 text-foreground font-semibold text-base">
               <Scale className="h-4 w-4 text-primary" />
-              <h2>5. Limitação de Responsabilidade</h2>
+              <h2>6. Limitação de Responsabilidade</h2>
             </div>
             <p>
               A contratação de projetos freelancer depende exclusivamente da decisão dos clientes finais, da conjuntura de mercado e da qualidade da negociação conduzida pelo profissional. 
@@ -122,11 +145,11 @@ function TermsPage() {
             </p>
           </section>
 
-          {/* Seção 6 */}
+          {/* Seção 7 */}
           <section className="space-y-3 p-6 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl">
             <div className="flex items-center gap-2.5 text-foreground font-semibold text-base">
               <FileText className="h-4 w-4 text-primary" />
-              <h2>6. Encerramento e Cancelamento da Conta</h2>
+              <h2>7. Encerramento e Cancelamento da Conta</h2>
             </div>
             <p>
               O usuário pode rescindir o presente contrato e solicitar a exclusão definitiva de sua conta e de todos os dados correspondentes 

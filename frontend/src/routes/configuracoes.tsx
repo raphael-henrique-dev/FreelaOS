@@ -12,10 +12,25 @@ import {
   Download,
   AlertTriangle,
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Cpu,
+  Lock
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import {
+  getLocalLLMKeys,
+  saveLocalLLMKeys,
+  clearLocalLLMKeys,
+  DEFAULT_LLM_ROUTING,
+  LLM_PROVIDER_IDS,
+  type LLMProviderId,
+  type LLMRoutingConfig,
+  type AgentSlotId,
+} from "@/lib/llm-keys";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -118,6 +133,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
           confirmacao: "EXCLUIR",
         },
       });
+      clearLocalLLMKeys();
       toast.success("Sua conta e todos os dados foram eliminados permanentemente.");
       setDeleteModalOpen(false);
       await supabase.auth.signOut();
@@ -167,6 +183,27 @@ function ConfigPage({ initialData }: { initialData: any }) {
   });
 
   const [integracoes, setIntegracoes] = useState(initialIntegrations);
+
+  // BYOK (Bring Your Own Key) — Estado local de chaves e roteamento por agente
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>(() => getLocalLLMKeys());
+  const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
+  const [ramProviders, setRamProviders] = useState<string[]>(() => {
+    const fromBackend: string[] = initialData.ramConfiguredProviders || [];
+    const fromLocal = Object.keys(getLocalLLMKeys());
+    return Array.from(new Set([...fromBackend, ...fromLocal]));
+  });
+
+  const savedRouting = config.integracoes?.llm_routing || {};
+  const [llmRouting, setLlmRouting] = useState<LLMRoutingConfig>({
+    mode: savedRouting.mode === "por_agente" ? "por_agente" : "principal",
+    principal: (savedRouting.principal as LLMProviderId) || DEFAULT_LLM_ROUTING.principal,
+    por_agente: {
+      scout: (savedRouting.por_agente?.scout as LLMProviderId) || DEFAULT_LLM_ROUTING.por_agente.scout,
+      analista: (savedRouting.por_agente?.analista as LLMProviderId) || DEFAULT_LLM_ROUTING.por_agente.analista,
+      redator: (savedRouting.por_agente?.redator as LLMProviderId) || DEFAULT_LLM_ROUTING.por_agente.redator,
+      assistente: (savedRouting.por_agente?.assistente as LLMProviderId) || DEFAULT_LLM_ROUTING.por_agente.assistente,
+    },
+  });
   
   const [modeloAtivo, setModeloAtivo] = useState(Array.isArray(config.modelos_proposta) ? "padrao" : (config.modelos_proposta?.ativo || "padrao"));
   const [promptPersonalizado, setPromptPersonalizado] = useState(config.modelos_proposta?.personalizado_prompt ?? "");
@@ -297,7 +334,37 @@ function ConfigPage({ initialData }: { initialData: any }) {
       return;
     }
 
-    const integracoesJson = integracoes.reduce((acc, curr) => ({ ...acc, [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive } }), {});
+    // 1. Salva as chaves BYOK localmente no navegador (nunca no banco de dados!)
+    const cleanedKeys = saveLocalLLMKeys(apiKeys);
+
+    // 2. Sincroniza as chaves (incluindo eventuais chaves limpas) com a memória RAM volátil do backend
+    const keysPayloadForRam: Record<string, string> = {};
+    for (const providerId of LLM_PROVIDER_IDS) {
+      keysPayloadForRam[providerId] = cleanedKeys[providerId] || "";
+    }
+    try {
+      const syncRes = await api.post("/api/auth/llm-keys", {
+        user_id: userId,
+        keys: keysPayloadForRam,
+      });
+      if (syncRes.data?.configured_providers) {
+        setRamProviders(syncRes.data.configured_providers);
+      } else {
+        setRamProviders(Object.keys(cleanedKeys));
+      }
+    } catch (err) {
+      console.warn("Aviso ao sincronizar chaves BYOK com a RAM do servidor:", err);
+    }
+
+    // 3. No banco de dados (Supabase), salva APENAS quais integrações estão habilitadas e o roteamento (sem nenhuma chave!)
+    const integracoesJson: Record<string, any> = integracoes.reduce(
+      (acc, curr) => ({
+        ...acc,
+        [curr.id]: { enabled: curr.enabled, ignoreExclusive: curr.ignoreExclusive },
+      }),
+      {}
+    );
+    integracoesJson.llm_routing = llmRouting;
     
     await saveConfig({
       userId,
@@ -338,19 +405,72 @@ function ConfigPage({ initialData }: { initialData: any }) {
   };
 
   function toggleIntegration(id: string, checked: boolean) {
-    const llmModels = ['openai', 'claude', 'groq', 'gemini', 'nvidia'];
-    
     setIntegracoes(prev => {
-      if (checked && llmModels.includes(id)) {
-        return prev.map(int => {
-          if (int.id === id) return { ...int, enabled: true };
-          if (llmModels.includes(int.id)) return { ...int, enabled: false };
-          return int;
-        });
+      const next = prev.map(int => int.id === id ? { ...int, enabled: checked } : int);
+      const enabledLLMs = next.filter(
+        int => LLM_PROVIDER_IDS.includes(int.id as LLMProviderId) && int.enabled
+      );
+
+      // Se ativou um provedor LLM e o principal atual não estava ativo, promove o novo como principal
+      if (checked && LLM_PROVIDER_IDS.includes(id as LLMProviderId)) {
+        const principalStillActive = enabledLLMs.some(e => e.id === llmRouting.principal);
+        if (!principalStillActive) {
+          setLlmRouting(r => ({ ...r, principal: id as LLMProviderId }));
+        }
+      } else if (!checked && id === llmRouting.principal && enabledLLMs.length > 0) {
+        setLlmRouting(r => ({ ...r, principal: enabledLLMs[0].id as LLMProviderId }));
       }
-      return prev.map(int => int.id === id ? { ...int, enabled: checked } : int);
+      return next;
     });
   }
+
+  function handleUpdateKeyInput(providerId: string, value: string) {
+    setApiKeys(prev => ({
+      ...prev,
+      [providerId]: value,
+    }));
+  }
+
+  async function handleClearKey(providerId: string) {
+    const updated = { ...apiKeys };
+    delete updated[providerId];
+    setApiKeys(updated);
+    saveLocalLLMKeys({ [providerId]: "" });
+    try {
+      const res = await api.post("/api/auth/llm-keys", {
+        user_id: userId,
+        keys: { [providerId]: "" },
+      });
+      if (res.data?.configured_providers) {
+        setRamProviders(res.data.configured_providers);
+      } else {
+        setRamProviders(prev => prev.filter(p => p !== providerId));
+      }
+      toast.info(`Chave de ${providerId.toUpperCase()} removida da memória.`);
+    } catch {
+      setRamProviders(prev => prev.filter(p => p !== providerId));
+    }
+  }
+
+  function handleUpdateAgentProvider(agent: AgentSlotId, provider: LLMProviderId) {
+    setLlmRouting(prev => ({
+      ...prev,
+      por_agente: {
+        ...prev.por_agente,
+        [agent]: provider,
+      },
+    }));
+  }
+
+  const platformIntegrationsList = integracoes.filter(
+    i => i.id === "99freelas" || i.id === "workana"
+  );
+  const llmIntegrationsList = integracoes.filter(i =>
+    LLM_PROVIDER_IDS.includes(i.id as LLMProviderId)
+  );
+  const enabledLLMProviders = llmIntegrationsList.filter(i => i.enabled);
+  const selectableLLMProviders =
+    enabledLLMProviders.length > 0 ? enabledLLMProviders : llmIntegrationsList;
 
   function toggleIgnoreExclusive(id: string, checked: boolean) {
     setIntegracoes(prev => prev.map(int => int.id === id ? { ...int, ignoreExclusive: checked } : int));
@@ -916,15 +1036,17 @@ function ConfigPage({ initialData }: { initialData: any }) {
           </CardContent>
         </Card>
 
-        {/* INTEGRACOES */}
+        {/* INTEGRACOES DE PLATAFORMAS */}
         <Card className="border-border/60 bg-card/60 lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Integrações de Plataformas e I.A</CardTitle>
-            <p className="text-xs text-muted-foreground">Ative ou desative as fontes de dados e modelos de inteligência artificial do freela.</p>
+            <CardTitle className="text-base">Integrações de Plataformas</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Ative ou desative as plataformas de trabalho freelancer onde o FreelaOS buscará oportunidades e mensagens.
+            </p>
           </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-2">
-            {integracoes.map((i) => (
-              <div key={i.id} className="flex flex-col gap-2 rounded-xl border border-border/50 bg-background/40 p-3 hover:bg-muted/10 transition-colors">
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {platformIntegrationsList.map((i) => (
+              <div key={i.id} className="flex flex-col gap-2 rounded-xl border border-border/50 bg-background/40 p-3.5 hover:bg-muted/10 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-start gap-3">
                     <div className="grid h-9 w-9 place-items-center rounded-lg bg-accent">
@@ -1026,6 +1148,222 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 )}
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* MOTORES E PROVEDORES DE I.A (BYOK - BRING YOUR OWN KEY) */}
+        <Card className="border-border/60 bg-card/60 lg:col-span-2">
+          <CardHeader className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Provedores de I.A</CardTitle>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Ative um ou mais provedores de IA e informe suas chaves de API.
+              suas chaves ficam salvas apenas no armazenamento local deste navegador, nunca são gravadas no banco de dados e são destruídas imediatamente ao encerrar a sessão.
+            </p>
+          </CardHeader>
+
+          <CardContent className="space-y-5">
+            {/* MODO DE ROTEAMENTO DOS AGENTES */}
+            <div className="rounded-xl border border-border/60 bg-background/40 p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    Roteamento de Provedores para os Agentes
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Escolha se todos os agentes usarão um único provedor principal ou se cada agente terá seu próprio motor.
+                  </p>
+                </div>
+                <div className="flex rounded-lg border border-border/60 bg-card/60 p-1 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setLlmRouting(prev => ({ ...prev, mode: "principal" }))}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                      llmRouting.mode === "principal"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Usar apenas um principal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLlmRouting(prev => ({ ...prev, mode: "por_agente" }))}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                      llmRouting.mode === "por_agente"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Escolher por Agente
+                  </button>
+                </div>
+              </div>
+
+              {llmRouting.mode === "principal" ? (
+                <div className="grid gap-3 sm:grid-cols-2 items-center pt-2 border-t border-border/40">
+                  <div>
+                    <Label className="text-xs text-foreground font-medium">Provedor Principal para todos os Agentes</Label>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Caso você ative outros provedores abaixo com chave configurada, eles atuarão automaticamente como fallback em cascata se o principal falhar.
+                    </p>
+                  </div>
+                  <select
+                    value={llmRouting.principal}
+                    onChange={(e) =>
+                      setLlmRouting(prev => ({ ...prev, principal: e.target.value as LLMProviderId }))
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background/60 px-3 py-2 text-sm ring-offset-background"
+                  >
+                    {selectableLLMProviders.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.enabled ? "(Ativo)" : "(Desativado)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-2 border-t border-border/40">
+                  {(
+                    [
+                      { id: "scout" as const, label: "Scout IA", sub: "Extração e estruturação de vagas" },
+                      { id: "analista" as const, label: "Analista IA", sub: "Cálculo de Score e viabilidade" },
+                      { id: "redator" as const, label: "Redator IA", sub: "Elaboração de propostas" },
+                      { id: "assistente" as const, label: "Assistente Nexus", sub: "Chat interativo e ferramentas" },
+                    ]
+                  ).map((ag) => (
+                    <div key={ag.id} className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">{ag.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{ag.sub}</p>
+                      </div>
+                      <select
+                        value={llmRouting.por_agente[ag.id]}
+                        onChange={(e) =>
+                          handleUpdateAgentProvider(ag.id, e.target.value as LLMProviderId)
+                        }
+                        className="flex h-9 w-full rounded-md border border-input bg-background/60 px-2.5 py-1 text-xs ring-offset-background"
+                      >
+                        {selectableLLMProviders.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.enabled ? "" : "(Desativado)"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* LISTA DE PROVEDORES DE I.A */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {llmIntegrationsList.map((i) => {
+                const keyValue = apiKeys[i.id] || "";
+                const hasKeyConfigured = keyValue.trim().length > 0 || ramProviders.includes(i.id);
+                const isKeyVisible = !!visibleKeys[i.id];
+                const isPrincipal =
+                  llmRouting.mode === "principal" && llmRouting.principal === i.id && i.enabled;
+
+                return (
+                  <div
+                    key={i.id}
+                    className={`flex flex-col gap-3 rounded-xl border p-3.5 transition-colors ${
+                      i.enabled
+                        ? "border-primary/40 bg-primary/5"
+                        : "border-border/50 bg-background/40 hover:bg-muted/10"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-start gap-3">
+                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent">
+                          <KeyRound className={`h-4 w-4 ${i.enabled ? "text-primary" : "text-muted-foreground"}`} />
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium">{i.name}</p>
+                            {isPrincipal && (
+                              <Badge variant="default" className="h-4 px-1.5 text-[10px]">
+                                Principal
+                              </Badge>
+                            )}
+                            {i.enabled && (
+                              <Badge
+                                variant="outline"
+                                className={`h-4 px-1.5 text-[10px] ${
+                                  hasKeyConfigured
+                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                                    : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                                }`}
+                              >
+                                {hasKeyConfigured ? "Chave ativa" : "Chave pendente"}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{i.desc}</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={i.enabled}
+                        onCheckedChange={(checked) => toggleIntegration(i.id, checked)}
+                      />
+                    </div>
+
+                    {i.enabled && (
+                      <div className="flex flex-col gap-2 border-t border-border/50 pt-3 animate-in fade-in slide-in-from-top-1">
+                        <Label className="text-[11px] text-muted-foreground flex items-center justify-between">
+                          <span>API Key ({i.name})</span>
+                          <span className="text-[10px] text-muted-foreground/70">
+                            Apenas em memória local/RAM
+                          </span>
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <Input
+                              type={isKeyVisible ? "text" : "password"}
+                              value={keyValue}
+                              onChange={(e) => handleUpdateKeyInput(i.id, e.target.value)}
+                              placeholder={`Cole sua API Key da ${i.name}...`}
+                              autoComplete="off"
+                              className="pr-9 border-border/60 bg-background/70 font-mono text-xs h-9"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setVisibleKeys((prev) => ({ ...prev, [i.id]: !prev[i.id] }))
+                              }
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                              title={isKeyVisible ? "Ocultar chave" : "Mostrar chave"}
+                            >
+                              {isKeyVisible ? (
+                                <EyeOff className="h-3.5 w-3.5" />
+                              ) : (
+                                <Eye className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </div>
+                          {keyValue && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleClearKey(i.id)}
+                              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                              title="Remover chave da memória"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
