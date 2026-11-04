@@ -247,6 +247,17 @@ class SenderService:
             try:
                 page = browser.new_page()
                 page.goto(url_vaga, timeout=60000)
+
+                # Verifica se a vaga ainda está aberta (Não "Em Andamento" ou "Cancelada")
+                btn_alternativo = page.locator("a.btn:has-text('Em andamento'), a.btn:has-text('Cancelado'), a.btn:has-text('Encerrado')").first
+                if btn_alternativo.count() > 0:
+                    status_text = btn_alternativo.inner_text().strip()
+                    logger.info(f"[SENDER] Vaga {vaga_id} não está mais aberta (status: {status_text}).")
+                    opp_repo.update_opportunity(vaga_id, {
+                        "status": "Ignorada", 
+                        "data_envio_proposta": datetime.now().isoformat()
+                        })
+                    return {"status": "closed", "message": f"A vaga não está mais aberta (status: {status_text})."}
                 
                 # Verifica se a proposta já foi enviada (botão Melhorar Proposta)
                 btn_melhorar = page.locator("a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')").first
