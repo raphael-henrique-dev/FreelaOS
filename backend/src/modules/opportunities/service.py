@@ -144,7 +144,56 @@ Orçamento: R$ {vaga.get('orcamento')}
 6. Assine no final com o nome do profissional.
 7. Estime o "valor" (apenas números inteiros) e o "prazo" (ex: "7 dias", "1 mês") ideais para a vaga.
 8. Não esqueça de incluir quebras de linha entre parágrafos.
-9. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA (EXEMPLO) E NADA MAIS (sem formatação markdown ```json):
+9. Não narre as etapas da abordagem, nem explique o raciocínio da IA. Foque em escrever a proposta final que será enviada ao cliente.
+
+Exemplo do que NÃO FAZER: 
+
+Olá, Nonato! Tudo bem?
+
+Diagnóstico e Espelhamento:
+Notei que você está buscando planilhas inteligentes, portais web customizados e automação de processos para gestão de finanças, estoque e vendas. Essa necessidade provavelmente está gerando retrabalho manual, atrasos na atualização de dados e risco de erros que impactam a tomada de decisão.
+
+Ancoragem de Valor:
+Imagine um ambiente onde as informações são atualizadas automaticamente, relatórios são gerados com um clique e os colaboradores acessam dashboards em tempo real. Isso reduz o tempo gasto em tarefas repetitivas, elimina erros de digitação, melhora a visibilidade dos indicadores e permite focar em estratégias de crescimento, aumentando a lucratividade.
+
+Prova Social Estratégica:
+- SIGLattes: desenvolvi um sistema que extrai dados de docentes via SOAP, processa e entrega relatórios consolidados, demonstrando capacidade de integração de fontes externas e automação de planilhas.
+- Area Academica: criei uma aplicação web que organiza percursos acadêmicos, gera relatórios dinâmicos e oferece exportação de dados, evidenciando experiência em dashboards e exportação automática.
+- FreelaOS: construí um portal web para freelancers com painéis administrativos, geração automática de relatórios financeiros e importação de arquivos CSV/Excel, alinhado exatamente ao tipo de solução que você precisa.
+
+Inversão de Risco:
+Proponho iniciar com um MVP focado nas planilhas inteligentes e no primeiro módulo do portal. Entregaremos uma versão funcional em 5 dias, permitindo validar a automação e o layout dos relatórios antes de avançar para os demais módulos. Caso não atenda às expectativas, ajustaremos sem custo adicional na fase inicial. O valor apresentado está aberto a negociação para atender ao seu orçamento.
+
+Fechamento por Escolha Forçada:
+Prefere que eu envie a proposta completa agora para avançarmos, ou marcamos uma call de cinco minutos para alinhar os últimos detalhes e definir o prazo?
+
+Que tal conversarmos mais sobre?
+
+Atenciosamente,
+(nome do desenvolvedor)
+
+Exemplo do que FAZER:
+
+Olá, Nonato! Tudo bem?
+
+Notei que você está buscando planilhas inteligentes, portais web customizados e automação de processos para gestão de finanças, estoque e vendas. Essa necessidade provavelmente está gerando retrabalho manual, atrasos na atualização de dados e risco de erros que impactam a tomada de decisão.
+
+Imagine um ambiente onde as informações são atualizadas automaticamente, relatórios são gerados com um clique e os colaboradores acessam dashboards em tempo real. Isso reduz o tempo gasto em tarefas repetitivas, elimina erros de digitação, melhora a visibilidade dos indicadores e permite focar em estratégias de crescimento, aumentando a lucratividade.
+
+Abaixo, segue alguns projetos do meu portfólio que demonstram experiência em soluções similares:
+- SIGLattes: desenvolvi um sistema que extrai dados de docentes via SOAP, processa e entrega relatórios consolidados, demonstrando capacidade de integração de fontes externas e automação de planilhas.
+- Area Academica: criei uma aplicação web que organiza percursos acadêmicos, gera relatórios dinâmicos e oferece exportação de dados, evidenciando experiência em dashboards e exportação automática.
+- FreelaOS: construí um portal web para freelancers com painéis administrativos, geração automática de relatórios financeiros e importação de arquivos CSV/Excel, alinhado exatamente ao tipo de solução que você precisa.
+
+Proponho iniciar com um MVP focado nas planilhas inteligentes e no primeiro módulo do portal. Entregaremos uma versão funcional em 5 dias, permitindo validar a automação e o layout dos relatórios antes de avançar para os demais módulos. Caso não atenda às expectativas, ajustaremos sem custo adicional na fase inicial. O valor apresentado está aberto a negociação para atender ao seu orçamento.
+Prefere que eu envie a proposta completa agora para avançarmos, ou marcamos uma call de cinco minutos para alinhar os últimos detalhes e definir o prazo?
+
+Que tal conversarmos mais sobre?
+
+Atenciosamente,
+(nome do desenvolvedor)
+
+10. RETORNE UM JSON VÁLIDO COM A SEGUINTE ESTRUTURA (EXEMPLO) E NADA MAIS (sem formatação markdown ```json):
 {{
   "texto_proposta": "Olá 'nome do cliente'! Tudo bem? (quebra de linha) Me chamo `APENAS O PRIMEIRO nome do desenvolvedor´, sou desenvolvedor... [...] -Termine o texto com:- Atenciosamente, APENAS O PRIMEIRO nome do desenvolvedor´",
   "valor": 1500,
