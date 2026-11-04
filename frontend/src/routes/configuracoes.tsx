@@ -1315,10 +1315,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
                     {i.enabled && (
                       <div className="flex flex-col gap-2 border-t border-border/50 pt-3 animate-in fade-in slide-in-from-top-1">
                         <Label className="text-[11px] text-muted-foreground flex items-center justify-between">
-                          <span>API Key ({i.name})</span>
-                          <span className="text-[10px] text-muted-foreground/70">
-                            Apenas em memória local/RAM
-                          </span>
+                          <span>API Key</span>
                         </Label>
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1">
@@ -1326,7 +1323,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
                               type={isKeyVisible ? "text" : "password"}
                               value={keyValue}
                               onChange={(e) => handleUpdateKeyInput(i.id, e.target.value)}
-                              placeholder={`Cole sua API Key da ${i.name}...`}
+                              placeholder={`Cole sua API Key aqui...`}
                               autoComplete="off"
                               className="pr-9 border-border/60 bg-background/70 font-mono text-xs h-9"
                             />
