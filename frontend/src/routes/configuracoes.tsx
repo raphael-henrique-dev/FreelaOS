@@ -1220,7 +1220,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
                   >
                     {selectableLLMProviders.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} {p.enabled ? "(Ativo)" : "(Desativado)"}
+                        {p.name}
                       </option>
                     ))}
                   </select>
@@ -1271,11 +1271,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
                 return (
                   <div
                     key={i.id}
-                    className={`flex flex-col gap-3 rounded-xl border p-3.5 transition-colors ${
-                      i.enabled
-                        ? "border-primary/40 bg-primary/5"
-                        : "border-border/50 bg-background/40 hover:bg-muted/10"
-                    }`}
+                    className="flex flex-col gap-3 rounded-xl border border-border/50 bg-background/40 p-3.5 transition-colors hover:bg-muted/10"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-start gap-3">
