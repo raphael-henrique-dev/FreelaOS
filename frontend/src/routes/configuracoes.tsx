@@ -1161,7 +1161,7 @@ function ConfigPage({ initialData }: { initialData: any }) {
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Ative um ou mais provedores de IA e informe suas chaves de API.
-              suas chaves ficam salvas apenas no armazenamento local deste navegador, nunca são gravadas no banco de dados e são destruídas imediatamente ao encerrar a sessão.
+              suas chaves nunca são gravadas no banco de dados e são destruídas imediatamente ao encerrar a sessão.
             </p>
           </CardHeader>
 
@@ -1365,14 +1365,72 @@ function ConfigPage({ initialData }: { initialData: any }) {
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Privacidade e Proteção de Dados (LGPD)</CardTitle>
+              <CardTitle className="text-base">Privacidade e Termos de Uso</CardTitle>
             </div>
             <p className="text-xs text-muted-foreground">
-              Gerencie seus direitos como titular sob a Lei Federal nº 13.709/2018 (Lei Geral de Proteção de Dados).
+              Gerencie seus dados pessoais, histórico de propostas, oportunidades captadas, clientes e mensagens. Você pode exportar seus dados ou solicitar a eliminação completa da sua conta.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Status e Diretrizes */}
+
+            {/* Portabilidade de Dados (Artigo 18, II e V) */}
+            <div className="rounded-xl border border-border/50 bg-background/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Download className="h-4 w-4 text-primary" />
+                  Portabilidade e Acesso aos Dados
+                </h4>
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  Obtenha uma cópia completa de todos os seus dados cadastrais, histórico de propostas, oportunidades captadas, clientes e mensagens em formato JSON estruturado.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportData}
+                disabled={exportingData}
+                className="whitespace-nowrap gap-2 text-xs border-border/70 hover:bg-muted/40 cursor-pointer"
+              >
+                {exportingData ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Exportando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5" /> Exportar Dados (JSON)
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Zona de Perigo: Eliminação Definitiva (Artigo 18, VI) */}
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-semibold text-destructive flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Eliminação da Conta
+                </h4>
+                <p className="text-xs text-muted-foreground max-w-xl">
+                  Esta ação exclui permanentemente seu perfil, todas as vagas rastreadas, propostas geradas, contatos, logs de agentes e arquivos de sessão do navegador.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setDeleteConfirmInput("");
+                  setDeleteModalOpen(true);
+                }}
+                className="whitespace-nowrap gap-2 text-xs font-semibold cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Excluir Minha Conta
+              </Button>
+            </div>
+          </CardContent>
+        
+        {/* Status e Diretrizes */}
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="rounded-xl border border-border/50 bg-background/40 p-4 space-y-1">
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
@@ -1421,62 +1479,6 @@ function ConfigPage({ initialData }: { initialData: any }) {
               </div>
             </div>
 
-            {/* Portabilidade de Dados (Artigo 18, II e V) */}
-            <div className="rounded-xl border border-border/50 bg-background/40 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Download className="h-4 w-4 text-primary" />
-                  Portabilidade e Acesso aos Dados (Art. 18, II e V)
-                </h4>
-                <p className="text-xs text-muted-foreground max-w-xl">
-                  Obtenha uma cópia completa de todos os seus dados cadastrais, histórico de propostas, oportunidades captadas, clientes e mensagens em formato JSON estruturado.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleExportData}
-                disabled={exportingData}
-                className="whitespace-nowrap gap-2 text-xs border-border/70 hover:bg-muted/40 cursor-pointer"
-              >
-                {exportingData ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Exportando...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-3.5 w-3.5" /> Exportar Dados (JSON)
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Zona de Perigo: Eliminação Definitiva (Artigo 18, VI) */}
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-destructive flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Eliminação Definitiva da Conta (Art. 18, VI)
-                </h4>
-                <p className="text-xs text-muted-foreground max-w-xl">
-                  Exercício do direito de esquecimento. Esta ação exclui permanentemente seu perfil, todas as vagas rastreadas, propostas geradas, contatos, logs de agentes e arquivos de sessão do navegador.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  setDeleteConfirmInput("");
-                  setDeleteModalOpen(true);
-                }}
-                className="whitespace-nowrap gap-2 text-xs font-semibold cursor-pointer"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Excluir Minha Conta
-              </Button>
-            </div>
-          </CardContent>
         </Card>
       </div>
 

@@ -239,7 +239,7 @@ class SenderService:
         with sync_playwright() as p:
             browser = p.chromium.launch_persistent_context(
                 user_data_dir=session_dir,
-                headless=True,
+                headless=False,
                 viewport={"width": 1280, "height": 720},
                 args=["--disable-blink-features=AutomationControlled"]
             )
@@ -272,6 +272,22 @@ class SenderService:
                 if link_enviar.count() > 0:
                     link_enviar.click()
                     page.wait_for_load_state("domcontentloaded", timeout=15000)
+
+
+                div_erro_creditos = page.locator("div.content-box-message.fail:has-text('Não é possível enviar proposta neste projeto porque não há conexões disponíveis suficientes (1).')")
+                if div_erro_creditos.count() > 0:
+                    msg_erro = page.locator("div.content-box-message.fail").inner_text().strip()
+                    logger.error(f"[SENDER] Créditos insuficientes para enviar proposta na vaga {vaga_id}: {msg_erro}")
+                    AgentActivityLogger.log(
+                                                user_id,
+                                                "Sender",
+                                                f"Erro ao enviar proposta para [{titulo}]... Falta de conexões/créditos suficientes.",
+                                                "erro",
+                                                4,
+                                                {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma},
+                                            )
+                    
+                    raise ValueError(f"Erro ao acessar a vaga: {msg_erro}")
                 
 
                 if "register" in page.url:
