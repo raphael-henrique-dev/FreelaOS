@@ -249,9 +249,9 @@ class SenderService:
                 page.goto(url_vaga, timeout=60000)
 
                 # Verifica se a vaga ainda está aberta (Não "Em Andamento" ou "Cancelada")
-                btn_alternativo = page.locator("a.btn:has-text('Em andamento'), a.btn:has-text('Cancelado'), a.btn:has-text('Encerrado')").first
+                btn_alternativo = page.locator("a.btn:has-text('Em andamento'), a.btn:has-text('Cancelado'), a.btn:has-text('Encerrado')")
                 if btn_alternativo.count() > 0:
-                    status_text = btn_alternativo.inner_text().strip()
+                    status_text = btn_alternativo.first.inner_text().strip()
                     logger.info(f"[SENDER] Vaga {vaga_id} não está mais aberta (status: {status_text}).")
                     opp_repo.update_opportunity(vaga_id, {
                         "status": "Ignorada", 
@@ -260,7 +260,7 @@ class SenderService:
                     return {"status": "closed", "message": f"A vaga não está mais aberta (status: {status_text})."}
                 
                 # Verifica se a proposta já foi enviada (botão Melhorar Proposta)
-                btn_melhorar = page.locator("a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')").first
+                btn_melhorar = page.locator("a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')")
                 if btn_melhorar.count() > 0:
                     opp_repo.update_opportunity(vaga_id, {
                         "status": "Proposta enviada", 
@@ -268,33 +268,73 @@ class SenderService:
                     })
                     return {"status": "success", "message": "Aviso: Uma proposta já havia sido enviada anteriormente. O status foi atualizado."}
 
-                link_enviar = page.locator("a.btn:has-text('Enviar proposta')").first
-                if link_enviar.count() > 0:
-                    link_enviar.click()
-                    page.wait_for_load_state("domcontentloaded", timeout=15000)
-                
+                # Navega para o formulário de proposta caso ainda não esteja na rota /project/bid/
+                if "/project/bid/" not in page.url:
+                    link_enviar = page.locator(
+                        "p.btn-outer a[href*='/project/bid/'], "
+                        "p.btn-outer a.btn, "
+                        "p.btn-outer a, "
+                        "a.btn.blue.clickable:has-text('Enviar proposta'), "
+                        "a.btn:has-text('Enviar proposta'), "
+                        "a[href*='/project/bid/'], "
+                        "a:has-text('Enviar proposta')"
+                    ).first
+
+                    if link_enviar.count() > 0:
+                        href = link_enviar.get_attribute("href")
+                        try:
+                            link_enviar.click()
+                            page.wait_for_load_state("domcontentloaded", timeout=15000)
+                        except Exception as click_err:
+                            logger.warning(f"[SENDER] Clique no botão 'Enviar proposta' falhou: {click_err}")
+
+                        # Se após o clique ainda não estiver em /project/bid/, navega diretamente via href
+                        if "/project/bid/" not in page.url and href:
+                            bid_url = href if href.startswith("http") else f"https://www.99freelas.com.br{href}"
+                            logger.info(f"[SENDER] Navegando diretamente para a URL de proposta extraída: {bid_url}")
+                            page.goto(bid_url, timeout=30000)
+                            page.wait_for_load_state("domcontentloaded", timeout=15000)
+                    else:
+                        # Fallback: se o botão não foi localizado no DOM, tenta a rota canônica /project/bid/<slug>
+                        if "/project/" in page.url and "/project/bid/" not in page.url:
+                            direct_bid_url = page.url.replace("/project/", "/project/bid/")
+                            logger.info(f"[SENDER] Botão não encontrado no DOM. Tentando rota canônica direta: {direct_bid_url}")
+                            page.goto(direct_bid_url, timeout=30000)
+                            page.wait_for_load_state("domcontentloaded", timeout=15000)
 
                 if "register" in page.url:
                     logger.error(f"[SENDER] Sessão expirada para o usuário {user_id}.")
                     browser.close()
                     raise ValueError("Sessão expirada. Por favor, reconecte sua conta 99Freelas.")
                  
-                textarea = page.locator("#proposta")
+                textarea = page.locator("#proposta, textarea[name='proposta'], textarea#proposta, textarea").first
                 textarea.wait_for(state="visible", timeout=15000)
                 textarea.fill(texto)
                 
-                campo_valor = page.locator("#oferta")
+                campo_valor = page.locator("#oferta, input[name='oferta'], input#oferta").first
                 if campo_valor.count() > 0:
                     campo_valor.fill(f"{valor_final},00")
                 
                 prazo_nums = re.findall(r'\d+', prazo)
                 if prazo_nums:
                     prazo_dias = prazo_nums[0]
-                    campo_prazo = page.locator("#duracao-estimada")
+                    campo_prazo = page.locator(
+                        "#duracao-estimada, input[name='duracao-estimada'], input#duracao-estimada"
+                    ).first
                     if campo_prazo.count() > 0:
                         campo_prazo.fill(prazo_dias)
                         
-                btn_enviar = page.locator("#btnConcluirEnvioProposta")
+                btn_enviar = page.locator(
+                    "#btnConcluirEnvioProposta, "
+                    "p.btn-outer a.btn:has-text('Enviar proposta'), "
+                    "p.btn-outer a:has-text('Enviar proposta'), "
+                    "a.btn.blue.clickable:has-text('Enviar proposta'), "
+                    "a.btn:has-text('Enviar proposta'), "
+                    "button:has-text('Enviar proposta'), "
+                    "button:has-text('Concluir'), "
+                    "button[type='submit'], "
+                    "input[type='submit']"
+                ).first
                 if btn_enviar.count() > 0:
                     btn_enviar.click()
                 
@@ -317,13 +357,13 @@ class SenderService:
                         )
 
                         btn_melhorar_pos = page.locator(
-                            "a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')"
+                            "a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta'), p.btn-outer a:has-text('Melhorar proposta'), a[href*='/project/bid/']"
                         ).first
                         if btn_melhorar_pos.count() == 0:
                             page.goto(url_vaga, timeout=60000)
                             page.wait_for_load_state("domcontentloaded", timeout=15000)
                             btn_melhorar_pos = page.locator(
-                                "a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')"
+                                "a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta'), p.btn-outer a:has-text('Melhorar proposta'), a[href*='/project/bid/']"
                             ).first
 
                         if btn_melhorar_pos.count() > 0:
@@ -351,16 +391,30 @@ class SenderService:
                                     texto_final, valor_final, novo_valor
                                 )
                                 if texto_ajustado != texto_final:
-                                    textarea_edit = page.locator("#proposta")
+                                    textarea_edit = page.locator(
+                                        "#proposta, textarea[name='proposta'], textarea#proposta, textarea"
+                                    ).first
                                     textarea_edit.wait_for(state="visible", timeout=10000)
                                     textarea_edit.fill(texto_ajustado)
                                     texto_final = texto_ajustado
 
-                                campo_valor_edit = page.locator("#oferta")
+                                campo_valor_edit = page.locator(
+                                    "#oferta, input[name='oferta'], input#oferta"
+                                ).first
                                 campo_valor_edit.wait_for(state="visible", timeout=10000)
                                 campo_valor_edit.fill(f"{novo_valor},00")
 
-                                btn_salvar_edit = page.locator("#btnConcluirEnvioProposta")
+                                btn_salvar_edit = page.locator(
+                                    "#btnConcluirEnvioProposta, "
+                                    "p.btn-outer a.btn:has-text('Enviar proposta'), "
+                                    "p.btn-outer a:has-text('Enviar proposta'), "
+                                    "a.btn.blue.clickable:has-text('Enviar proposta'), "
+                                    "a.btn:has-text('Enviar proposta'), "
+                                    "button:has-text('Enviar proposta'), "
+                                    "button:has-text('Concluir'), "
+                                    "button[type='submit'], "
+                                    "input[type='submit']"
+                                ).first
                                 if btn_salvar_edit.count() > 0:
                                     btn_salvar_edit.click()
 

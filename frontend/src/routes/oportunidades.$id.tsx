@@ -133,7 +133,7 @@ function OpDetail() {
   return (
     <PageContainer>
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.history.back()}>
+        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => navigate({ to: "/oportunidades" })}>
           <ArrowLeft className="mr-1 h-4 w-4" /> Voltar
         </Button>
         
