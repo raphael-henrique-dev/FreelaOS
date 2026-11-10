@@ -65,3 +65,6 @@ videos
 skills-lock.json
 
 backend/tests/
+
+
+*.mp4

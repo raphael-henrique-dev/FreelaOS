@@ -272,8 +272,14 @@ def executar_extracao_url(user_id: str, url: str):
     AgentActivityLogger.log(user_id, "Scout", f"Visitando URL sob demanda...", "processando", 1)
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+        browser = None
+        page = None
         try:
+            browser = p.chromium.launch(
+                headless=True,
+                args=BrowserManager.DEFAULT_CHROMIUM_ARGS,
+            )
+            BrowserManager.register_browser(user_id, browser)
             page = browser.new_page()
             page.goto(url, timeout=30000)
             page.wait_for_timeout(2000)
@@ -284,7 +290,7 @@ def executar_extracao_url(user_id: str, url: str):
                     try:
                         expandir_btn.first.click()
                         page.wait_for_timeout(800)
-                    except:
+                    except Exception:
                         pass
                 
                 avatar_elem = page.locator(".info-usuario.cliente .info-usuario-imagem img")
@@ -301,7 +307,7 @@ def executar_extracao_url(user_id: str, url: str):
             AgentActivityLogger.log(user_id, "Scout", f"Erro ao acessar URL", "erro", 1)
             raise ValueError(f"Não foi possível acessar a URL: {e}")
         finally:
-            browser.close()
+            BrowserManager.close_browser_safely(user_id, browser, page)
 
     if not texto_bruto:
         raise ValueError("A página não retornou conteúdo legível.")

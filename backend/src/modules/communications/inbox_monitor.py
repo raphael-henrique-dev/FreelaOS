@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from playwright.async_api import async_playwright
 from datetime import datetime
 
-from backend.src.core.browser_manager import BrowserManager
+from backend.src.core.browser_manager import BrowserManager, SessionBusyError
+from backend.src.modules.auth.service import AuthService
 from backend.src.modules.communications.repository import MessageRepository
 from backend.src.modules.opportunities.repository import ClientRepository
 
@@ -38,6 +39,52 @@ async def monitor_loop(user_id: str):
     if user_id in active_monitors:
         active_monitors.discard(user_id)
 
+def _persist_unread_messages_sync(user_id: str, mensagens_extraidas: list[dict]):
+    """Salva as mensagens extraídas no banco de dados fora do contexto do navegador."""
+    for item in mensagens_extraidas:
+        if BrowserManager.is_cancelled(user_id):
+            break
+
+        remetente = item["remetente"]
+        texto = item["texto"]
+        url_origem = item["url_origem"]
+
+        # 1. EVITAR DUPLICIDADE
+        if msg_repo.check_duplicate(user_id, remetente, url_origem, texto):
+            continue  # Já alertamos sobre essa, passa pra próxima
+
+        # 2. CRUZAMENTO DE DADOS (Busca Cliente)
+        cliente_id = None
+        oportunidade_id = None
+
+        if remetente != "Desconhecido":
+            # Tenta achar um cliente com nome parecido (case-insensitive)
+            cliente = client_repo.get_client_by_name(user_id, remetente)
+            if cliente:
+                cliente_id = cliente.get("id")
+
+                # Se achou cliente, tenta achar o último projeto em andamento ou aguardando dele
+                oportunidade_id = msg_repo.get_latest_opportunity_for_client(cliente_id)
+
+        # 3. SALVAR NO BANCO
+        logger.debug(f"Tentando salvar no banco. Tamanho do texto: {len(texto)} caracteres")
+        try:
+            res = msg_repo.insert_message({
+                "perfil_id": user_id,
+                "cliente_id": cliente_id,
+                "oportunidade_id": oportunidade_id,
+                "remetente_nome": remetente,
+                "conteudo": texto,
+                "url_origem": url_origem,
+                "lida": False
+            })
+            logger.info(f"Nova mensagem recebida de {remetente} salva com sucesso!")
+            if hasattr(res, 'data') and not res.data:
+                logger.warning(f"Atenção: O retorno do Supabase parece vazio. Resposta: {res}")
+        except Exception:
+            logger.error("Erro específico ao inserir mensagem no Supabase", exc_info=True)
+
+
 async def check_unread_messages(user_id: str):
     if BrowserManager.is_cancelled(user_id):
         return
@@ -46,115 +93,102 @@ async def check_unread_messages(user_id: str):
     if not os.path.exists(session_dir):
         return # Sem sessão, aguarda até o usuário logar no 99freelas.
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch_persistent_context(
-            user_data_dir=session_dir,
-            headless=True, # Rodar totalmente invisível em background
-            args=["--disable-blink-features=AutomationControlled"]
-        )
-        BrowserManager.register_browser(user_id, browser)
-        try:
-            page = await browser.new_page()
-            await page.goto("https://www.99freelas.com.br/messages/unread", timeout=60000)
-            await page.wait_for_load_state("domcontentloaded")
-            
-            # Busca estritamente dentro da lista de conversas da página
-            unread_locators = page.locator("ul.menu-list li.conversa-item:not(.model)")
-            try:
-                await unread_locators.first.wait_for(state="visible", timeout=5000)
-            except Exception:
-                # logger.debug(f"Nenhuma nova mensagem encontrada para o usuário {user_id}.")
-                return
-            count = await unread_locators.count()
-            
-            if count == 0:
-                return # Nenhuma mensagem nova
-                
-            for i in range(count):
-                node = unread_locators.nth(i)
-                
-                # Tenta extrair o remetente
-                # O 99Freelas armazena os dados mastigados em inputs hidden (info-conversa-nome-pessoa)
-                # ou na tag .pessoa-name
-                remetente_input = node.locator("input.info-conversa-nome-pessoa").first
-                remetente = await remetente_input.get_attribute("value") if await remetente_input.count() > 0 else ""
+    mensagens_extraidas: list[dict] = []
 
-                logger.debug(f"Remetente extraído do input: {remetente}")
-
-                if not remetente:
-                    remetente_loc = node.locator(".nome-usuario .text, .pessoa-name, .item-info-pessoa, .sub-title.nome-pessoa, .author, .name, .user-name, strong").first
-                    logger.debug(f"Remetente localizado: {remetente_loc}")
-                    
-                    remetente = await remetente_loc.text_content() if await remetente_loc.count() > 0 else "Desconhecido"
-                
-                # Decodifica HTML entities (ex: Host&aacute;cio -> Hostácio)
-                remetente = html.unescape(remetente).strip()
-
-                logger.debug(f"Remetente extraído: {remetente}")
-                
-                if remetente == "Desconhecido":
-                    html_dump = await node.inner_html()
-                    logger.debug(f"HTML desse node (Desconhecido): {html_dump[:200]}...")
-                
-                # Tenta extrair o trecho do texto
-                texto_loc = node.locator(".text, .message-content, .preview, p").first
-                texto = await texto_loc.text_content() if await texto_loc.count() > 0 else "Mensagem sem texto detectado."
-                texto = html.unescape(texto).strip()
-
-                # FILTRO ANTI-FANTASMA
-                if remetente == "Desconhecido" and texto == "Mensagem sem texto detectado.":
-                    continue
-                
-                # Link da conversa (o 99freelas usa o data-id no li)
-                conversa_id = await node.get_attribute("data-id")
-                url_origem = f"https://www.99freelas.com.br/messages/inbox/{conversa_id}" if conversa_id else ""
-
-                # 1. EVITAR DUPLICIDADE
-                if msg_repo.check_duplicate(user_id, remetente, url_origem, texto):
-                    continue # Já alertamos sobre essa, passa pra próxima
-                    
-                # 2. CRUZAMENTO DE DADOS (Busca Cliente)
-                cliente_id = None
-                oportunidade_id = None
-                
-                if remetente != "Desconhecido":
-                    # Tenta achar um cliente com nome parecido (case-insensitive)
-                    cliente = client_repo.get_client_by_name(user_id, remetente)
-                    if cliente:
-                        cliente_id = cliente.get("id")
-                        
-                        # Se achou cliente, tenta achar o último projeto em andamento ou aguardando dele
-                        oportunidade_id = msg_repo.get_latest_opportunity_for_client(cliente_id)
-
-                # 3. SALVAR NO BANCO
-                logger.debug(f"Tentando salvar no banco. Tamanho do texto: {len(texto)} caracteres")
+    try:
+        async with BrowserManager.async_session_guard(
+            user_id, "99freelas", session_dir, blocking=False
+        ):
+            async with async_playwright() as p:
+                browser = None
+                page = None
                 try:
-                    res = msg_repo.insert_message({
-                        "perfil_id": user_id,
-                        "cliente_id": cliente_id,
-                        "oportunidade_id": oportunidade_id,
-                        "remetente_nome": remetente,
-                        "conteudo": texto,
-                        "url_origem": url_origem,
-                        "lida": False
-                    })
-                    logger.info(f"Nova mensagem recebida de {remetente} salva com sucesso!")
-                    if hasattr(res, 'data') and not res.data:
-                        logger.warning(f"Atenção: O retorno do Supabase parece vazio. Resposta: {res}")
-                except Exception as db_err:
-                    logger.error("Erro específico ao inserir mensagem no Supabase", exc_info=True)
+                    browser = await p.chromium.launch_persistent_context(
+                        user_data_dir=session_dir,
+                        headless=True, # Rodar totalmente invisível em background
+                        args=BrowserManager.DEFAULT_CHROMIUM_ARGS,
+                    )
+                    BrowserManager.register_browser(user_id, browser)
+                    page = await browser.new_page()
+                    await page.goto("https://www.99freelas.com.br/messages/unread", timeout=60000)
+                    await page.wait_for_load_state("domcontentloaded")
 
-        except Exception as e:
-            if BrowserManager.is_cancelled(user_id):
-                logger.info(f"Monitor de Inbox encerrado para {user_id} pelo logout.")
-                return
-            logger.error(f"Falha durante a extração de mensagens: {e}", exc_info=True)
-        finally:
-            BrowserManager.unregister_browser(user_id, browser)
-            try:
-                await browser.close()
-            except Exception:
-                pass
+                    if not os.path.exists(os.path.join(session_dir, "cookies.json")) and "login" not in page.url:
+                        try:
+                            AuthService._save_cookies_cache(session_dir, await browser.cookies())
+                        except Exception:
+                            pass
+                    
+                    # Busca estritamente dentro da lista de conversas da página
+                    unread_locators = page.locator("ul.menu-list li.conversa-item:not(.model)")
+                    try:
+                        await unread_locators.first.wait_for(state="visible", timeout=5000)
+                    except Exception:
+                        # logger.debug(f"Nenhuma nova mensagem encontrada para o usuário {user_id}.")
+                        return
+                    count = await unread_locators.count()
+                    
+                    if count == 0:
+                        return # Nenhuma mensagem nova
+                        
+                    for i in range(count):
+                        node = unread_locators.nth(i)
+                        
+                        # Tenta extrair o remetente
+                        # O 99Freelas armazena os dados mastigados em inputs hidden (info-conversa-nome-pessoa)
+                        # ou na tag .pessoa-name
+                        remetente_input = node.locator("input.info-conversa-nome-pessoa").first
+                        remetente = await remetente_input.get_attribute("value") if await remetente_input.count() > 0 else ""
+
+                        logger.debug(f"Remetente extraído do input: {remetente}")
+
+                        if not remetente:
+                            remetente_loc = node.locator(".nome-usuario .text, .pessoa-name, .item-info-pessoa, .sub-title.nome-pessoa, .author, .name, .user-name, strong").first
+                            logger.debug(f"Remetente localizado: {remetente_loc}")
+                            
+                            remetente = await remetente_loc.text_content() if await remetente_loc.count() > 0 else "Desconhecido"
+                        
+                        # Decodifica HTML entities (ex: Host&aacute;cio -> Hostácio)
+                        remetente = html.unescape(remetente).strip()
+
+                        logger.debug(f"Remetente extraído: {remetente}")
+                        
+                        if remetente == "Desconhecido":
+                            html_dump = await node.inner_html()
+                            logger.debug(f"HTML desse node (Desconhecido): {html_dump[:200]}...")
+                        
+                        # Tenta extrair o trecho do texto
+                        texto_loc = node.locator(".text, .message-content, .preview, p").first
+                        texto = await texto_loc.text_content() if await texto_loc.count() > 0 else "Mensagem sem texto detectado."
+                        texto = html.unescape(texto).strip()
+
+                        # FILTRO ANTI-FANTASMA
+                        if remetente == "Desconhecido" and texto == "Mensagem sem texto detectado.":
+                            continue
+                        
+                        # Link da conversa (o 99freelas usa o data-id no li)
+                        conversa_id = await node.get_attribute("data-id")
+                        url_origem = f"https://www.99freelas.com.br/messages/inbox/{conversa_id}" if conversa_id else ""
+
+                        mensagens_extraidas.append({
+                            "remetente": remetente,
+                            "texto": texto,
+                            "url_origem": url_origem,
+                        })
+
+                except Exception as e:
+                    if BrowserManager.is_cancelled(user_id):
+                        logger.info(f"Monitor de Inbox encerrado para {user_id} pelo logout.")
+                        return
+                    logger.error(f"Falha durante a extração de mensagens: {e}", exc_info=True)
+                finally:
+                    await BrowserManager.close_browser_safely_async(user_id, browser, page)
+    except SessionBusyError:
+        logger.debug(f"[InboxMonitor] Perfil 99freelas de {user_id} ocupado por outra operação. Pulando ciclo.")
+        return
+
+    if mensagens_extraidas and not BrowserManager.is_cancelled(user_id):
+        await asyncio.to_thread(_persist_unread_messages_sync, user_id, mensagens_extraidas)
 
 
 class StartRequest(BaseModel):

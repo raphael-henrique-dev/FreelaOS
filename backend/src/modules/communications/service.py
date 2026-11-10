@@ -236,231 +236,229 @@ class SenderService:
         texto_final = texto
         preco_medio_extraido = None
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch_persistent_context(
-                user_data_dir=session_dir,
-                headless=False,
-                viewport={"width": 1280, "height": 720},
-                args=["--disable-blink-features=AutomationControlled"]
-            )
-            BrowserManager.register_browser(user_id, browser)
-            try:
-                page = browser.new_page()
-                page.goto(url_vaga, timeout=60000)
+        with BrowserManager.session_guard(user_id, "99freelas", session_dir, blocking=True, timeout=90.0):
+            with sync_playwright() as p:
+                browser = None
+                page = None
+                try:
+                    browser = p.chromium.launch_persistent_context(
+                        user_data_dir=session_dir,
+                        headless=True,
+                        viewport={"width": 1280, "height": 720},
+                        args=BrowserManager.DEFAULT_CHROMIUM_ARGS,
+                    )
+                    BrowserManager.register_browser(user_id, browser)
+                    page = browser.new_page()
+                    page.goto(url_vaga, timeout=60000)
 
-                # Verifica se a vaga ainda está aberta (Não "Em Andamento" ou "Cancelada")
-                btn_alternativo = page.locator("a.btn:has-text('Em andamento'), a.btn:has-text('Cancelado'), a.btn:has-text('Encerrado')").first
-                if btn_alternativo.count() > 0:
-                    status_text = btn_alternativo.inner_text().strip()
-                    logger.info(f"[SENDER] Vaga {vaga_id} não está mais aberta (status: {status_text}).")
-                    opp_repo.update_opportunity(vaga_id, {
-                        "status": "Ignorada", 
-                        "data_envio_proposta": datetime.now().isoformat()
-                        })
-                    return {"status": "closed", "message": f"A vaga não está mais aberta (status: {status_text})."}
-                
-                # Verifica se a proposta já foi enviada (botão Melhorar Proposta)
-                btn_melhorar = page.locator("a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')").first
-                if btn_melhorar.count() > 0:
-                    opp_repo.update_opportunity(vaga_id, {
-                        "status": "Proposta enviada", 
-                        "data_envio_proposta": datetime.now().isoformat()
-                    })
-                    return {"status": "success", "message": "Aviso: Uma proposta já havia sido enviada anteriormente. O status foi atualizado."}
-
-                link_enviar = page.locator("a.btn:has-text('Enviar proposta')").first
-                if link_enviar.count() > 0:
-                    link_enviar.click()
-                    page.wait_for_load_state("domcontentloaded", timeout=15000)
-
-
-                div_erro_creditos = page.locator("div.content-box-message.fail:has-text('Não é possível enviar proposta neste projeto porque não há conexões disponíveis suficientes (1).')")
-                if div_erro_creditos.count() > 0:
-                    msg_erro = page.locator("div.content-box-message.fail").inner_text().strip()
-                    logger.error(f"[SENDER] Créditos insuficientes para enviar proposta na vaga {vaga_id}: {msg_erro}")
-                    AgentActivityLogger.log(
-                                                user_id,
-                                                "Sender",
-                                                f"Erro ao enviar proposta para [{titulo}]... Falta de conexões/créditos suficientes.",
-                                                "erro",
-                                                4,
-                                                {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma},
-                                            )
+                    # Verifica se a vaga ainda está aberta (Não "Em Andamento" ou "Cancelada")
+                    btn_alternativo = page.locator("a.btn:has-text('Em andamento'), a.btn:has-text('Cancelado'), a.btn:has-text('Encerrado')").first
+                    if btn_alternativo.count() > 0:
+                        status_text = btn_alternativo.inner_text().strip()
+                        logger.info(f"[SENDER] Vaga {vaga_id} não está mais aberta (status: {status_text}).")
+                        opp_repo.update_opportunity(vaga_id, {
+                            "status": "Ignorada", 
+                            "data_envio_proposta": datetime.now().isoformat()
+                            })
+                        return {"status": "closed", "message": f"A vaga não está mais aberta (status: {status_text})."}
                     
-                    raise ValueError(f"Erro ao acessar a vaga: {msg_erro}")
-                
+                    # Verifica se a proposta já foi enviada (botão Melhorar Proposta)
+                    btn_melhorar = page.locator("a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')").first
+                    if btn_melhorar.count() > 0:
+                        opp_repo.update_opportunity(vaga_id, {
+                            "status": "Proposta enviada", 
+                            "data_envio_proposta": datetime.now().isoformat()
+                        })
+                        return {"status": "success", "message": "Aviso: Uma proposta já havia sido enviada anteriormente. O status foi atualizado."}
 
-                if "register" in page.url:
-                    logger.error(f"[SENDER] Sessão expirada para o usuário {user_id}.")
-                    browser.close()
-                    raise ValueError("Sessão expirada. Por favor, reconecte sua conta 99Freelas.")
-                 
-                textarea = page.locator("#proposta")
-                textarea.wait_for(state="visible", timeout=15000)
-                textarea.fill(texto)
-                
-                campo_valor = page.locator("#oferta")
-                if campo_valor.count() > 0:
-                    campo_valor.fill(f"{valor_final},00")
-                
-                prazo_nums = re.findall(r'\d+', prazo)
-                if prazo_nums:
-                    prazo_dias = prazo_nums[0]
-                    campo_prazo = page.locator("#duracao-estimada")
-                    if campo_prazo.count() > 0:
-                        campo_prazo.fill(prazo_dias)
-                        
-                btn_enviar = page.locator("#btnConcluirEnvioProposta")
-                if btn_enviar.count() > 0:
-                    btn_enviar.click()
-                
-                SenderService._confirmar_modais_envio(page)
-                page.wait_for_load_state("networkidle", timeout=10000)
+                    link_enviar = page.locator("a.btn:has-text('Enviar proposta')").first
+                    if link_enviar.count() > 0:
+                        link_enviar.click()
+                        page.wait_for_load_state("domcontentloaded", timeout=15000)
 
-                # Fluxo pos-envio: verificacao automatica de preco medio e ajuste de orcamento
-                ajuste_ativo, percentual_abaixo = SenderService._obter_config_orcamento_abaixo_media(user_id)
-                mensagem_retorno = "Proposta enviada com sucesso pelo robô!"
 
-                if ajuste_ativo:
-                    try:
+                    div_erro_creditos = page.locator("div.content-box-message.fail:has-text('Não é possível enviar proposta neste projeto porque não há conexões disponíveis suficientes (1).')")
+                    if div_erro_creditos.count() > 0:
+                        msg_erro = page.locator("div.content-box-message.fail").inner_text().strip()
+                        logger.error(f"[SENDER] Créditos insuficientes para enviar proposta na vaga {vaga_id}: {msg_erro}")
                         AgentActivityLogger.log(
-                            user_id,
-                            "Sender",
-                            f"Verificando preco medio da concorrencia para [{titulo}]...",
-                            "processando",
-                            4,
-                            {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma},
-                        )
+                                                    user_id,
+                                                    "Sender",
+                                                    f"Erro ao enviar proposta para [{titulo}]... Falta de conexões/créditos suficientes.",
+                                                    "erro",
+                                                    4,
+                                                    {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma},
+                                                )
+                        
+                        raise ValueError(f"Erro ao acessar a vaga: {msg_erro}")
+                    
 
-                        btn_melhorar_pos = page.locator(
-                            "a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')"
-                        ).first
-                        if btn_melhorar_pos.count() == 0:
-                            page.goto(url_vaga, timeout=60000)
-                            page.wait_for_load_state("domcontentloaded", timeout=15000)
+                    if "register" in page.url:
+                        logger.error(f"[SENDER] Sessão expirada para o usuário {user_id}.")
+                        raise ValueError("Sessão expirada. Por favor, reconecte sua conta 99Freelas.")
+                     
+                    textarea = page.locator("#proposta")
+                    textarea.wait_for(state="visible", timeout=15000)
+                    textarea.fill(texto)
+                    
+                    campo_valor = page.locator("#oferta")
+                    if campo_valor.count() > 0:
+                        campo_valor.fill(f"{valor_final},00")
+                    
+                    prazo_nums = re.findall(r'\d+', prazo)
+                    if prazo_nums:
+                        prazo_dias = prazo_nums[0]
+                        campo_prazo = page.locator("#duracao-estimada")
+                        if campo_prazo.count() > 0:
+                            campo_prazo.fill(prazo_dias)
+                            
+                    btn_enviar = page.locator("#btnConcluirEnvioProposta")
+                    if btn_enviar.count() > 0:
+                        btn_enviar.click()
+                    
+                    SenderService._confirmar_modais_envio(page)
+                    page.wait_for_load_state("networkidle", timeout=10000)
+
+                    # Fluxo pos-envio: verificacao automatica de preco medio e ajuste de orcamento
+                    ajuste_ativo, percentual_abaixo = SenderService._obter_config_orcamento_abaixo_media(user_id)
+                    mensagem_retorno = "Proposta enviada com sucesso pelo robô!"
+
+                    if ajuste_ativo:
+                        try:
+                            AgentActivityLogger.log(
+                                user_id,
+                                "Sender",
+                                f"Verificando preco medio da concorrencia para [{titulo}]...",
+                                "processando",
+                                4,
+                                {"vaga_id": vaga_id, "titulo": titulo, "plataforma": plataforma},
+                            )
+
                             btn_melhorar_pos = page.locator(
                                 "a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')"
                             ).first
+                            if btn_melhorar_pos.count() == 0:
+                                page.goto(url_vaga, timeout=60000)
+                                page.wait_for_load_state("domcontentloaded", timeout=15000)
+                                btn_melhorar_pos = page.locator(
+                                    "a.btn:has-text('Melhorar proposta'), a.btn:has-text('Melhorar Proposta')"
+                                ).first
 
-                        if btn_melhorar_pos.count() > 0:
-                            btn_melhorar_pos.click()
-                            page.wait_for_load_state("domcontentloaded", timeout=15000)
+                            if btn_melhorar_pos.count() > 0:
+                                btn_melhorar_pos.click()
+                                page.wait_for_load_state("domcontentloaded", timeout=15000)
 
-                            try:
-                                page.locator("div.generic.information").first.wait_for(
-                                    state="visible", timeout=8000
-                                )
-                            except Exception:
-                                pass
+                                try:
+                                    page.locator("div.generic.information").first.wait_for(
+                                        state="visible", timeout=8000
+                                    )
+                                except Exception:
+                                    pass
 
-                            preco_medio_extraido = SenderService._extrair_preco_medio_dom(page)
-                            logger.info(
-                                f"[SENDER] Preco medio extraido para vaga {vaga_id}: {preco_medio_extraido}"
-                            )
-
-                            novo_valor = SenderService._calcular_novo_orcamento(
-                                valor_final, preco_medio_extraido, percentual_abaixo
-                            )
-
-                            if novo_valor is not None:
-                                texto_ajustado = SenderService._ajustar_preco_no_texto(
-                                    texto_final, valor_final, novo_valor
-                                )
-                                if texto_ajustado != texto_final:
-                                    textarea_edit = page.locator("#proposta")
-                                    textarea_edit.wait_for(state="visible", timeout=10000)
-                                    textarea_edit.fill(texto_ajustado)
-                                    texto_final = texto_ajustado
-
-                                campo_valor_edit = page.locator("#oferta")
-                                campo_valor_edit.wait_for(state="visible", timeout=10000)
-                                campo_valor_edit.fill(f"{novo_valor},00")
-
-                                btn_salvar_edit = page.locator("#btnConcluirEnvioProposta")
-                                if btn_salvar_edit.count() > 0:
-                                    btn_salvar_edit.click()
-
-                                SenderService._confirmar_modais_envio(page)
-                                page.wait_for_load_state("networkidle", timeout=10000)
-
-                                valor_anterior = valor_final
-                                valor_final = novo_valor
-                                mensagem_retorno = (
-                                    f"Proposta enviada e orcamento ajustado para R$ {valor_final},00 "
-                                    f"({percentual_abaixo:g}% abaixo da media de R$ {preco_medio_extraido:.2f})!"
-                                )
-                                AgentActivityLogger.log(
-                                    user_id,
-                                    "Sender",
-                                    f"Orcamento ajustado para R$ {valor_final},00 ({percentual_abaixo:g}% abaixo da media R$ {preco_medio_extraido:.2f}) em [{titulo}]",
-                                    "sucesso",
-                                    4,
-                                    {
-                                        "vaga_id": vaga_id,
-                                        "titulo": titulo,
-                                        "plataforma": plataforma,
-                                        "valor_anterior": valor_anterior,
-                                        "valor_proposta": valor_final,
-                                        "preco_medio": preco_medio_extraido,
-                                    },
-                                )
-                            else:
+                                preco_medio_extraido = SenderService._extrair_preco_medio_dom(page)
                                 logger.info(
-                                    f"[SENDER] Orcamento mantido em R$ {valor_final},00 para vaga {vaga_id} (media={preco_medio_extraido})."
+                                    f"[SENDER] Preco medio extraido para vaga {vaga_id}: {preco_medio_extraido}"
                                 )
-                                AgentActivityLogger.log(
-                                    user_id,
-                                    "Sender",
-                                    f"Orcamento mantido em R$ {valor_final},00 para [{titulo}]",
-                                    "sucesso",
-                                    4,
-                                    {
-                                        "vaga_id": vaga_id,
-                                        "titulo": titulo,
-                                        "plataforma": plataforma,
-                                        "valor_proposta": valor_final,
-                                        "preco_medio": preco_medio_extraido,
-                                    },
-                                )
-                        else:
-                            logger.warning(
-                                f"[SENDER] Botao 'Melhorar proposta' nao encontrado apos envio da vaga {vaga_id}."
-                            )
-                    except Exception as adjust_err:
-                        logger.warning(
-                            f"[SENDER] Falha ao ajustar orcamento pela media na vaga {vaga_id}: {adjust_err}"
-                        )
-                        AgentActivityLogger.log(
-                            user_id,
-                            "Sender",
-                            f"Proposta enviada, mas nao foi possivel ajustar pela media em [{titulo}]",
-                            "alerta",
-                            4,
-                            {"vaga_id": vaga_id, "plataforma": plataforma},
-                        )
 
-                opp_repo.update_opportunity(vaga_id, {
-                    "status": "Proposta enviada",
-                    "valor_proposta": valor_final,
-                    "proposta_ia": texto_final,
-                    "data_envio_proposta": datetime.now().isoformat()
-                })
-                return {
-                    "status": "success",
-                    "message": mensagem_retorno,
-                    "valor_proposta": valor_final,
-                    "proposta_ia": texto_final,
-                    "preco_medio": preco_medio_extraido,
-                }
-                
-            except Exception as e:
-                if BrowserManager.is_cancelled(user_id):
-                    logger.info(f"[SENDER] Envio abortado pelo logout do usuário {user_id}.")
-                    return {"status": "cancelled", "message": "Envio abortado pelo logout."}
-                raise ValueError(f"Envio falhou ou interceptou barreira: {str(e)}")
-            finally:
-                BrowserManager.unregister_browser(user_id, browser)
-                try:
-                    browser.close()
-                except Exception:
-                    pass
+                                novo_valor = SenderService._calcular_novo_orcamento(
+                                    valor_final, preco_medio_extraido, percentual_abaixo
+                                )
+
+                                if novo_valor is not None:
+                                    texto_ajustado = SenderService._ajustar_preco_no_texto(
+                                        texto_final, valor_final, novo_valor
+                                    )
+                                    if texto_ajustado != texto_final:
+                                        textarea_edit = page.locator("#proposta")
+                                        textarea_edit.wait_for(state="visible", timeout=10000)
+                                        textarea_edit.fill(texto_ajustado)
+                                        texto_final = texto_ajustado
+
+                                    campo_valor_edit = page.locator("#oferta")
+                                    campo_valor_edit.wait_for(state="visible", timeout=10000)
+                                    campo_valor_edit.fill(f"{novo_valor},00")
+
+                                    btn_salvar_edit = page.locator("#btnConcluirEnvioProposta")
+                                    if btn_salvar_edit.count() > 0:
+                                        btn_salvar_edit.click()
+
+                                    SenderService._confirmar_modais_envio(page)
+                                    page.wait_for_load_state("networkidle", timeout=10000)
+
+                                    valor_anterior = valor_final
+                                    valor_final = novo_valor
+                                    mensagem_retorno = (
+                                        f"Proposta enviada e orcamento ajustado para R$ {valor_final},00 "
+                                        f"({percentual_abaixo:g}% abaixo da media de R$ {preco_medio_extraido:.2f})!"
+                                    )
+                                    AgentActivityLogger.log(
+                                        user_id,
+                                        "Sender",
+                                        f"Orcamento ajustado para R$ {valor_final},00 ({percentual_abaixo:g}% abaixo da media R$ {preco_medio_extraido:.2f}) em [{titulo}]",
+                                        "sucesso",
+                                        4,
+                                        {
+                                            "vaga_id": vaga_id,
+                                            "titulo": titulo,
+                                            "plataforma": plataforma,
+                                            "valor_anterior": valor_anterior,
+                                            "valor_proposta": valor_final,
+                                            "preco_medio": preco_medio_extraido,
+                                        },
+                                    )
+                                else:
+                                    logger.info(
+                                        f"[SENDER] Orcamento mantido em R$ {valor_final},00 para vaga {vaga_id} (media={preco_medio_extraido})."
+                                    )
+                                    AgentActivityLogger.log(
+                                        user_id,
+                                        "Sender",
+                                        f"Orcamento mantido em R$ {valor_final},00 para [{titulo}]",
+                                        "sucesso",
+                                        4,
+                                        {
+                                            "vaga_id": vaga_id,
+                                            "titulo": titulo,
+                                            "plataforma": plataforma,
+                                            "valor_proposta": valor_final,
+                                            "preco_medio": preco_medio_extraido,
+                                        },
+                                    )
+                            else:
+                                logger.warning(
+                                    f"[SENDER] Botao 'Melhorar proposta' nao encontrado apos envio da vaga {vaga_id}."
+                                )
+                        except Exception as adjust_err:
+                            logger.warning(
+                                f"[SENDER] Falha ao ajustar orcamento pela media na vaga {vaga_id}: {adjust_err}"
+                            )
+                            AgentActivityLogger.log(
+                                user_id,
+                                "Sender",
+                                f"Proposta enviada, mas nao foi possivel ajustar pela media em [{titulo}]",
+                                "alerta",
+                                4,
+                                {"vaga_id": vaga_id, "plataforma": plataforma},
+                            )
+
+                    opp_repo.update_opportunity(vaga_id, {
+                        "status": "Proposta enviada",
+                        "valor_proposta": valor_final,
+                        "proposta_ia": texto_final,
+                        "data_envio_proposta": datetime.now().isoformat()
+                    })
+                    return {
+                        "status": "success",
+                        "message": mensagem_retorno,
+                        "valor_proposta": valor_final,
+                        "proposta_ia": texto_final,
+                        "preco_medio": preco_medio_extraido,
+                    }
+                    
+                except Exception as e:
+                    if BrowserManager.is_cancelled(user_id):
+                        logger.info(f"[SENDER] Envio abortado pelo logout do usuário {user_id}.")
+                        return {"status": "cancelled", "message": "Envio abortado pelo logout."}
+                    raise ValueError(f"Envio falhou ou interceptou barreira: {str(e)}")
+                finally:
+                    BrowserManager.close_browser_safely(user_id, browser, page)
